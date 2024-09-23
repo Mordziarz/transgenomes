@@ -22,6 +22,11 @@ library(circlize)
 The transfer_function() function accepted two FASTA files (fasta_q and fasta_s) along with two BED files containing gene annotations (bed_q and bed_s). The evalue_cutoff parameter was used to specify the E-value threshold for BLAST results.
 
 The bed should look like this: 
+V1 - Genome name
+V2 - Start annotation
+V3 - End annotation
+V4 - Gene name
+
 | V1  | V2 | V3 |   V4  |
 | -------- | ----- |    -----   |   -----   |
 | Mtogenome  | 0  | 74  | trnD1 |
