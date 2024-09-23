@@ -44,7 +44,7 @@ The transfer_function() function produced an output table enriched with annotati
 
 # Visualization
 
-The program generated a basic visualization using the circlize package (https://github.com/jokergoo/circlize). This visualization was created based on the output from the transfer_function function.
+The program generated a basic visualization using the circlize package (https://github.com/jokergoo/circlize). This visualization was created based on the output from the transfer_function() function.
 
 ```r
 plot_transfers(transfer_function_out = transfer_function_out, gap=40, start_degree=90, transparency=0.7)
