@@ -85,7 +85,7 @@ transfer_function <- function(fasta_q="",fasta_s="",bed_q=bed_q, bed_s=bed_s, ev
     for (i in 1:base::nrow(bed_q)) {
 
       if (blast_n$q_start[j] > bed_q$V2[i] & blast_n$q_start[j] < bed_q$V3[i] & blast_n$q_end[j] > bed_q$V3[i]) {
-        blast_n$q_genes[j] <- base::paste0(blast_n$q_genes[j],bed_q$V4[i]," ","(",bed_q$V3[i]-bed_q$V2[i],")","/","(",bed_q$V3[i]-blast_n$q_start[j],")")
+        blast_n$q_genes[j] <- base::paste0(blast_n$q_genes[j],bed_q$V4[i]," ","(",bed_q$V3[i]-bed_q$V2[i],")","/","(",bed_q$V3[i]-blast_n$q_start[j],")",",")
       }
     }
   }
@@ -95,7 +95,7 @@ transfer_function <- function(fasta_q="",fasta_s="",bed_q=bed_q, bed_s=bed_s, ev
     for (i in 1:base::nrow(bed_q)) {
 
       if (blast_n$q_start[j] < bed_q$V2[i] & bed_q$V2[i] < blast_n$q_end[j] & blast_n$q_end[j] < bed_q$V3[i]) {
-        blast_n$q_genes[j] <- base::paste0(blast_n$q_genes[j],bed_q$V4[i]," ","(",bed_q$V3[i]-bed_q$V2[i],")","/","(",blast_n$q_end[j]- bed_q$V2[i],")")
+        blast_n$q_genes[j] <- base::paste0(blast_n$q_genes[j],bed_q$V4[i]," ","(",bed_q$V3[i]-bed_q$V2[i],")","/","(",blast_n$q_end[j]- bed_q$V2[i],")",",")
       }
     }
   }
@@ -105,7 +105,7 @@ transfer_function <- function(fasta_q="",fasta_s="",bed_q=bed_q, bed_s=bed_s, ev
     for (i in 1:base::nrow(bed_q)) {
 
       if (blast_n$q_start[j] > bed_q$V2[i] & blast_n$q_end[j] < bed_q$V3[i]) {
-        blast_n$q_genes[j] <- base::paste0(blast_n$q_genes[j],bed_q$V4[i]," ","(",bed_q$V3[i]-bed_q$V2[i],")","/","(",blast_n$q_end[j]- blast_n$q_start[j],")")
+        blast_n$q_genes[j] <- base::paste0(blast_n$q_genes[j],bed_q$V4[i]," ","(",bed_q$V3[i]-bed_q$V2[i],")","/","(",blast_n$q_end[j]- blast_n$q_start[j],")",",")
       }
     }
   }
@@ -125,7 +125,7 @@ transfer_function <- function(fasta_q="",fasta_s="",bed_q=bed_q, bed_s=bed_s, ev
     for (i in 1:base::nrow(bed_s)) {
 
       if (blast_n$s_start[j] > bed_s$V2[i] & blast_n$s_start[j] < bed_s$V3[i] & blast_n$s_end[j] > bed_s$V3[i]) {
-        blast_n$s_genes[j] <- base::paste0(blast_n$s_genes[j],bed_s$V4[i]," ","(",bed_s$V3[i]-bed_s$V2[i],")","/","(",bed_s$V3[i]-blast_n$s_start[j],")")
+        blast_n$s_genes[j] <- base::paste0(blast_n$s_genes[j],bed_s$V4[i]," ","(",bed_s$V3[i]-bed_s$V2[i],")","/","(",bed_s$V3[i]-blast_n$s_start[j],")",",")
       }
     }
   }
@@ -135,7 +135,7 @@ transfer_function <- function(fasta_q="",fasta_s="",bed_q=bed_q, bed_s=bed_s, ev
     for (i in 1:base::nrow(bed_s)) {
 
       if (blast_n$s_start[j] < bed_s$V2[i] & bed_s$V2[i] < blast_n$s_end[j] & blast_n$s_end[j] < bed_s$V3[i]) {
-        blast_n$s_genes[j] <- base::paste0(blast_n$s_genes[j],bed_s$V4[i]," ","(",bed_s$V3[i]-bed_s$V2[i],")","/","(",blast_n$s_end[j]- bed_s$V2[i],")")
+        blast_n$s_genes[j] <- base::paste0(blast_n$s_genes[j],bed_s$V4[i]," ","(",bed_s$V3[i]-bed_s$V2[i],")","/","(",blast_n$s_end[j]- bed_s$V2[i],")",",")
       }
     }
   }
@@ -145,7 +145,7 @@ transfer_function <- function(fasta_q="",fasta_s="",bed_q=bed_q, bed_s=bed_s, ev
     for (i in 1:base::nrow(bed_s)) {
 
       if (blast_n$s_start[j] > bed_s$V2[i] & blast_n$s_end[j] < bed_s$V3[i]) {
-        blast_n$s_genes[j] <- base::paste0(blast_n$s_genes[j],bed_s$V4[i]," ","(",bed_s$V3[i]-bed_s$V2[i],")","/","(",blast_n$s_end[j]- blast_n$s_start[j],")")
+        blast_n$s_genes[j] <- base::paste0(blast_n$s_genes[j],bed_s$V4[i]," ","(",bed_s$V3[i]-bed_s$V2[i],")","/","(",blast_n$s_end[j]- blast_n$s_start[j],")",",")
       }
     }
   }
