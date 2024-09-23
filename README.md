@@ -47,7 +47,7 @@ The transfer_function() function produced an output table enriched with annotati
 The program generated a basic visualization using the circlize package (https://github.com/jokergoo/circlize). This visualization was created based on the output from the transfer_function function.
 
 ```r
-plot_transfers(transfers_function_out = transfers_function_out,gap=40, start_degree=90,transparency=0.7)
+plot_transfers(transfers_function_out = transfers_function_out, gap=40, start_degree=90, transparency=0.7)
 ```
 
 Useful functions for image cleaning in R
