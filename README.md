@@ -29,8 +29,8 @@ V4 - Gene name
 
 | V1  | V2 | V3 |   V4  |
 | -------- | ----- |    -----   |   -----   |
-| Mtogenome  | 0  | 74  | trnD1 |
-| Mtogenome  | 270  |   342 |   trnN    |
+| Mitogenome  | 0  | 74  | trnD1 |
+| Mitogenome  | 270  |   342 |   trnN    |
 
 ```r
 transfer_function(fasta_q = "fasta_q.fasta",
