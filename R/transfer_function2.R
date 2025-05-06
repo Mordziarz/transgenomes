@@ -38,20 +38,35 @@
 
 transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed_2=bed_2, bed_3=bed_3, evalue_cut_off=0.001) {
   
-  if (missing(fasta_1)) stop("fasta_1 is required", call. = FALSE)
-  if (missing(fasta_2)) stop("fasta_2 is required", call. = FALSE)
-  if (missing(fasta_3)) stop("fasta_3 is required", call. = FALSE)
-  if (missing(bed_1)) stop("bed_1 is required", call. = FALSE)
-  if (missing(bed_2)) stop("bed_2 is required", call. = FALSE)
-  if (missing(bed_3)) stop("bed_3 is required", call. = FALSE)
-  
-  if (!file.exists(fasta_1)) stop("fasta_1 file not found", call. = FALSE)
-  if (!file.exists(fasta_2)) stop("fasta_2 file not found", call. = FALSE)
-  if (!file.exists(fasta_3)) stop("fasta_3 file not found", call. = FALSE)
-  
-  if (file.size(fasta_1) == 0) stop("fasta_1 is empty", call. = FALSE)
-  if (file.size(fasta_2) == 0) stop("fasta_2 is empty", call. = FALSE)
-  if (file.size(fasta_3) == 0) stop("fasta_3 is empty", call. = FALSE)
+  if (base::missing(fasta_1)) {
+    stop("The fasta_1 predictions are required. Please provide a valid argument.",
+         call. = FALSE)
+  }
+
+  if (base::missing(fasta_2)) {
+    stop("The fasta_2 predictions are required. Please provide a valid argument.",
+         call. = FALSE)
+  }
+
+  if (base::missing(fasta_3)) {
+    stop("The fasta_3 predictions are required. Please provide a valid argument.",
+         call. = FALSE)
+  }
+
+  if (base::missing(bed_1)) {
+    stop("The bed_1 predictions are required. Please provide a valid argument.",
+         call. = FALSE)
+  }
+
+  if (base::missing(bed_2)) {
+    stop("The bed_2 predictions are required. Please provide a valid argument.",
+         call. = FALSE)
+  }
+
+  if (base::missing(bed_3)) {
+    stop("The bed_3 predictions are required. Please provide a valid argument.",
+         call. = FALSE)
+  }
   
   blast_1 <- metablastr::blast_nucleotide_to_nucleotide(query = fasta_1,
                                                         subject = fasta_2,
