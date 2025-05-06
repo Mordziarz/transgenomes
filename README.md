@@ -75,7 +75,7 @@ dev.off()
 circlize::circos.clear()
 ```
 
-![Circular](inst/graphs/plot.png)
+![Circular](inst/graphs/Ex_circos.png)
 
 # Citation
 
