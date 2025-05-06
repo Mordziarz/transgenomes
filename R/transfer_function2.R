@@ -4,11 +4,11 @@
 #' and annotates results with overlapping gene features from BED files.
 #'
 #' @param fasta_1 Path to the first subject FASTA file (required)
-#' @param bed_1 Path to the first subject species BED file (required)
-#' @param fasta_2 Path to the second subject FASTA file (optional)
-#' @param bed_2 Path to the second subject species BED file (optional)
-#' @param fasta_3 Path to the third subject FASTA file (optional)
-#' @param bed_3 Path to the third subject species BED file (optional)
+#' @param bed_1 The first subject species BED file (required)
+#' @param fasta_2 Path to the second subject FASTA file (required)
+#' @param bed_2 The second subject species BED file (required)
+#' @param fasta_3 Path to the third subject FASTA file (required)
+#' @param bed_3 The third subject species BED file (required)
 #' @param evalue_cut_off Maximum e-value threshold for BLAST hits (default: 0.001)
 #'
 #' @return A data frame containing:

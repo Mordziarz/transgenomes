@@ -6,7 +6,8 @@
 #' @param gap Numeric (30-100). Space between genome tracks in degrees (default: 40).
 #' @param start_degree Numeric (0-360). Initial rotation angle for the circular plot (default: 90).
 #' @param transparency Numeric (0-1). Opacity of alignment ribbons (0 = fully transparent, 1 = opaque, default: 0.7).
-#'
+#' @param color Character. Color of the links (ribbons) connecting aligned regions. Can be any color name recognized by R (e.g., "green", "red") or a vector of colors (default: "green").
+
 #' @return Circos plot visualizing genomic alignments
 #' @export
 #'
@@ -16,9 +17,8 @@
 #' plot_transfers(alignment_results, gap = 45, transparency = 0.5)
 #' }
 #' @importFrom circlize circos.par circos.initializeWithIdeogram circos.genomicLink
-#' @importFrom grDevices rgb
 
-plot_transfers <- function(transfer_function_out = transfer_function_out, gap=40, start_degree=90,transparency=0.7) {
+plot_transfers <- function(transfer_function_out = transfer_function_out, gap=40, start_degree=90,transparency=0.7,color="green") {
 
   if (missing(transfer_function_out)) {
     stop("Required argument 'transfer_function_out' is missing. Provide output from transfer_function().", call. = FALSE)
@@ -48,8 +48,7 @@ plot_transfers <- function(transfer_function_out = transfer_function_out, gap=40
   circlize::circos.initializeWithIdeogram(genome_plot)
   circlize::circos.genomicLink(links_q,
                                links_s,
-                               col = rand_color(nrow(links_q),
-                                                transparency = transparency),
+                               col = "green",
                                border = NA)
   base::message(base::paste0("Done!"))
 }
