@@ -64,7 +64,8 @@ The program generated a basic visualization using the circlize package (https://
 plot_transfers(transfer_function_out = transfer_function_out,
                 gap=40,
                 start_degree=90,
-                transparency=0.7)
+                transparency=0.7,
+                color="green")
 ```
 
 Useful functions for image cleaning in R
