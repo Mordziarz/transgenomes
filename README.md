@@ -43,19 +43,6 @@ transfer_function(fasta_q = "fasta_q.fasta",
 
 The transfer_function() function produced an output table enriched with annotations for genes that had undergone partial or complete transfer to the second genome. The q_genes and s_genes columns within this table provided details about these transfers. For instance, the entry "genes: atp1 (1530)/(790)" indicated that the gene atp1, with a total length of 1530 nucleotides, had been transferred, and the transferred portion was 790 nucleotides long.
 
-A second function, transfer_function2(), was also created to facilitate the process of checking homology between the mitogenome, chloroplast, and nuclear genome.
-
-```r
-transfer_function2(fasta_1="",
-                    fasta_2="",
-                    fasta_3="",
-                    bed_1=bed_1, 
-                    bed_2=bed_2, 
-                    bed_3=bed_3, 
-                    evalue_cut_off=0.001,
-                    cores=10)
-```
-
 # Visualization
 
 The program generated a basic visualization using the circlize package (https://github.com/jokergoo/circlize). This visualization was created based on the output from the transfer_function() function.
@@ -76,6 +63,21 @@ circlize::circos.clear()
 ```
 
 ![Circular](inst/graphs/Ex_circos.png)
+
+# Combine 3 genomes
+
+A second function, transfer_function2(), was also created to facilitate the process of checking homology between the mitogenome, chloroplast, and nuclear genome.
+
+```r
+transfer_function2(fasta_1="",
+                    fasta_2="",
+                    fasta_3="",
+                    bed_1=bed_1, 
+                    bed_2=bed_2, 
+                    bed_3=bed_3, 
+                    evalue_cut_off=0.001,
+                    cores=10)
+```
 
 # Citation
 
