@@ -36,7 +36,7 @@
 #' }
 #' @export
 
-transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed_2=bed_2, bed_3=bed_3 evalue_cut_off=0.001) {
+transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed_2=bed_2, bed_3=bed_3, evalue_cut_off=0.001) {
   
   if (missing(fasta_1)) stop("fasta_1 is required", call. = FALSE)
   if (missing(fasta_2)) stop("fasta_2 is required", call. = FALSE)
