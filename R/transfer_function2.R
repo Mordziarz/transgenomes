@@ -302,122 +302,122 @@ transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed
     }
   }
   
-  blast_3 <- metablastr::blast_nucleotide_to_nucleotide(query = fasta_1,
-                                                        subject = fasta_2,
-                                                        db.import = F,
-                                                        task="blastn",
-                                                        evalue = evalue_cut_off)
+  blast_3 <- metablastr::blast_nucleotide_to_nucleotide(query = fasta_2,
+                                                      subject = fasta_3,
+                                                      db.import = F,
+                                                      task="blastn",
+                                                      evalue = evalue_cut_off)
+
+blast_3$q_start <- as.numeric(blast_3$q_start)
+blast_3$s_start <- as.numeric(blast_3$s_start)
+
+blast_3$q_end <- as.numeric(blast_3$q_end)
+blast_3$s_end <- as.numeric(blast_3$s_end)
+
+blast_3$q_start1 <- ifelse(blast_3$q_start < blast_3$q_end, blast_3$q_start,blast_3$q_end)
+blast_3$q_end1 <- ifelse(blast_3$q_start < blast_3$q_end, blast_3$q_end,blast_3$q_start)
+
+blast_3$s_start1 <- ifelse(blast_3$s_start < blast_3$s_end, blast_3$s_start, blast_3$s_end)
+blast_3$s_end1 <- ifelse(blast_3$s_start < blast_3$s_end, blast_3$s_end, blast_3$s_start)
+
+
+blast_3$q_start <- blast_3$q_start1
+blast_3$s_start <- blast_3$s_start1
+
+blast_3$q_end <- blast_3$q_end1
+blast_3$s_end <- blast_3$s_end1
+
+blast_3$q_start1 <- NULL
+blast_3$s_start1 <- NULL
+
+blast_3$q_end1 <- NULL
+blast_3$s_end1 <- NULL
+
+blast_3$q_genes <- "genes: "
+blast_3$s_genes <- "genes: "
+
+bed_2 <- bed_2
+bed_3 <- bed_3
+
+for (j in 1:base::nrow(blast_3)) {
   
-  blast_3$q_start <- as.numeric(blast_3$q_start)
-  blast_3$s_start <- as.numeric(blast_3$s_start)
-  
-  blast_3$q_end <- as.numeric(blast_3$q_end)
-  blast_3$s_end <- as.numeric(blast_3$s_end)
-  
-  blast_3$q_start1 <- ifelse(blast_3$q_start < blast_3$q_end, blast_3$q_start,blast_3$q_end)
-  blast_3$q_end1 <- ifelse(blast_3$q_start < blast_3$q_end, blast_3$q_end,blast_3$q_start)
-  
-  blast_3$s_start1 <- ifelse(blast_3$s_start < blast_3$s_end, blast_3$s_start, blast_3$s_end)
-  blast_3$s_end1 <- ifelse(blast_3$s_start < blast_3$s_end, blast_3$s_end, blast_3$s_start)
-  
-  
-  blast_3$q_start <- blast_3$q_start1
-  blast_3$s_start <- blast_3$s_start1
-  
-  blast_3$q_end <- blast_3$q_end1
-  blast_3$s_end <- blast_3$s_end1
-  
-  blast_3$q_start1 <- NULL
-  blast_3$s_start1 <- NULL
-  
-  blast_3$q_end1 <- NULL
-  blast_3$s_end1 <- NULL
-  
-  blast_3$q_genes <- "genes: "
-  blast_3$s_genes <- "genes: "
-  
-  bed_2 <- bed_2
-  bed_2 <- bed_2
-  
-  for (j in 1:base::nrow(blast_3)) {
+  for (i in 1:base::nrow(bed_2)) {
     
-    for (i in 1:base::nrow(bed_2)) {
-      
-      if (blast_3$q_start[j] < bed_2$V2[i] & blast_3$q_end[j] > bed_2$V3[i]) {
-        blast_3$q_genes[j] <- paste0(blast_3$q_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")",",")
-      }
+    if (blast_3$q_start[j] < bed_2$V2[i] & blast_3$q_end[j] > bed_2$V3[i]) {
+      blast_3$q_genes[j] <- paste0(blast_3$q_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")",",")
     }
   }
+}
+
+for (j in 1:base::nrow(blast_3)) {
   
-  for (j in 1:base::nrow(blast_3)) {
+  for (i in 1:base::nrow(bed_2)) {
     
-    for (i in 1:base::nrow(bed_2)) {
-      
-      if (blast_3$q_start[j] > bed_2$V2[i] & blast_3$q_start[j] < bed_2$V3[i] & blast_3$q_end[j] > bed_2$V3[i]) {
-        blast_3$q_genes[j] <- base::paste0(blast_3$q_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")","/","(",bed_2$V3[i]-blast_3$q_start[j],")",",")
-      }
+    if (blast_3$q_start[j] > bed_2$V2[i] & blast_3$q_start[j] < bed_2$V3[i] & blast_3$q_end[j] > bed_2$V3[i]) {
+      blast_3$q_genes[j] <- base::paste0(blast_3$q_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")","/","(",bed_2$V3[i]-blast_3$q_start[j],")",",")
     }
   }
+}
+
+for (j in 1:base::nrow(blast_3)) {
   
-  for (j in 1:base::nrow(blast_3)) {
+  for (i in 1:base::nrow(bed_2)) {
     
-    for (i in 1:base::nrow(bed_2)) {
-      
-      if (blast_3$q_start[j] < bed_2$V2[i] & bed_2$V2[i] < blast_3$q_end[j] & blast_3$q_end[j] < bed_2$V3[i]) {
-        blast_3$q_genes[j] <- base::paste0(blast_3$q_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")","/","(",blast_3$q_end[j]- bed_2$V2[i],")",",")
-      }
+    if (blast_3$q_start[j] < bed_2$V2[i] & bed_2$V2[i] < blast_3$q_end[j] & blast_3$q_end[j] < bed_2$V3[i]) {
+      blast_3$q_genes[j] <- base::paste0(blast_3$q_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")","/","(",blast_3$q_end[j]- bed_2$V2[i],")",",")
     }
   }
+}
+
+for (j in 1:base::nrow(blast_3)) {
   
-  for (j in 1:base::nrow(blast_3)) {
+  for (i in 1:base::nrow(bed_2)) {
     
-    for (i in 1:base::nrow(bed_2)) {
-      
-      if (blast_3$q_start[j] > bed_2$V2[i] & blast_3$q_end[j] < bed_2$V3[i]) {
-        blast_3$q_genes[j] <- base::paste0(blast_3$q_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")","/","(",blast_3$q_end[j]- blast_3$q_start[j],")",",")
-      }
+    if (blast_3$q_start[j] > bed_2$V2[i] & blast_3$q_end[j] < bed_2$V3[i]) {
+      blast_3$q_genes[j] <- base::paste0(blast_3$q_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")","/","(",blast_3$q_end[j]- blast_3$q_start[j],")",",")
     }
   }
+}
+
+for (j in 1:base::nrow(blast_3)) {
   
-  for (j in 1:base::nrow(blast_3)) {
+  for (i in 1:base::nrow(bed_3)) {
     
-    for (i in 1:base::nrow(bed_2)) {
-      
-      if (blast_3$s_start[j] < bed_2$V2[i] & blast_3$s_end[j] > bed_2$V3[i]) {
-        blast_3$s_genes[j] <- base::paste0(blast_3$s_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")",",")
-      }
+    if (blast_3$s_start[j] < bed_3$V2[i] & blast_3$s_end[j] > bed_3$V3[i]) {
+      blast_3$s_genes[j] <- base::paste0(blast_3$s_genes[j],bed_3$V4[i]," ","(",bed_3$V3[i]-bed_3$V2[i],")",",")
     }
   }
+}
+
+for (j in 1:base::nrow(blast_3)) {
   
-  for (j in 1:base::nrow(blast_3)) {
+  for (i in 1:base::nrow(bed_3)) {
     
-    for (i in 1:base::nrow(bed_2)) {
-      
-      if (blast_3$s_start[j] > bed_2$V2[i] & blast_3$s_start[j] < bed_2$V3[i] & blast_3$s_end[j] > bed_2$V3[i]) {
-        blast_3$s_genes[j] <- base::paste0(blast_3$s_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")","/","(",bed_2$V3[i]-blast_3$s_start[j],")",",")
-      }
+    if (blast_3$s_start[j] > bed_3$V2[i] & blast_3$s_start[j] < bed_3$V3[i] & blast_3$s_end[j] > bed_3$V3[i]) {
+      blast_3$s_genes[j] <- base::paste0(blast_3$s_genes[j],bed_3$V4[i]," ","(",bed_3$V3[i]-bed_3$V2[i],")","/","(",bed_3$V3[i]-blast_3$s_start[j],")",",")
     }
   }
+}
+
+for (j in 1:base::nrow(blast_3)) {
   
-  for (j in 1:base::nrow(blast_3)) {
+  for (i in 1:base::nrow(bed_3)) {
     
-    for (i in 1:base::nrow(bed_2)) {
-      
-      if (blast_3$s_start[j] < bed_2$V2[i] & bed_2$V2[i] < blast_3$s_end[j] & blast_3$s_end[j] < bed_2$V3[i]) {
-        blast_3$s_genes[j] <- base::paste0(blast_3$s_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")","/","(",blast_3$s_end[j]- bed_2$V2[i],")",",")
-      }
+    if (blast_3$s_start[j] < bed_3$V2[i] & bed_3$V2[i] < blast_3$s_end[j] & blast_3$s_end[j] < bed_3$V3[i]) {
+      blast_3$s_genes[j] <- base::paste0(blast_3$s_genes[j],bed_3$V4[i]," ","(",bed_3$V3[i]-bed_3$V2[i],")","/","(",blast_3$s_end[j]- bed_3$V2[i],")",",")
     }
   }
+}
+
+for (j in 1:base::nrow(blast_3)) {
   
-  for (j in 1:base::nrow(blast_3)) {
+  for (i in 1:base::nrow(bed_3)) {
     
-    for (i in 1:base::nrow(bed_2)) {
-      
-      if (blast_3$s_start[j] > bed_2$V2[i] & blast_3$s_end[j] < bed_2$V3[i]) {
-        blast_3$s_genes[j] <- base::paste0(blast_3$s_genes[j],bed_2$V4[i]," ","(",bed_2$V3[i]-bed_2$V2[i],")","/","(",blast_3$s_end[j]- blast_3$s_start[j],")",",")
-      }
+    if (blast_3$s_start[j] > bed_3$V2[i] & blast_3$s_end[j] < bed_3$V3[i]) {
+      blast_3$s_genes[j] <- base::paste0(blast_3$s_genes[j],bed_3$V4[i]," ","(",bed_3$V3[i]-bed_3$V2[i],")","/","(",blast_3$s_end[j]- blast_3$s_start[j],")",",")
     }
   }
+}
   
   blast_end <- rbind(blast_1,blast_2,blast_3)
   base::message(base::paste0("Done!"))
