@@ -34,23 +34,23 @@
 
 transfer_function <- function(fasta_q="",fasta_s="",bed_q=bed_q, bed_s=bed_s, evalue_cut_off=0.001) {
 
-  if (base::missing(fasta_1)) {
-    stop("The fasta_1 predictions are required. Please provide a valid argument.",
+  if (base::missing(fasta_q)) {
+    stop("The fasta_q predictions are required. Please provide a valid argument.",
          call. = FALSE)
   }
 
-  if (base::missing(fasta_2)) {
-    stop("The fasta_2 predictions are required. Please provide a valid argument.",
+  if (base::missing(fasta_s)) {
+    stop("The fasta_s predictions are required. Please provide a valid argument.",
          call. = FALSE)
   }
 
-  if (base::missing(bed_1)) {
-    stop("The bed_1 predictions are required. Please provide a valid argument.",
+  if (base::missing(bed_q)) {
+    stop("The bed_q predictions are required. Please provide a valid argument.",
          call. = FALSE)
   }
 
-  if (base::missing(bed_2)) {
-    stop("The bed_2 predictions are required. Please provide a valid argument.",
+  if (base::missing(bed_s)) {
+    stop("The bed_s predictions are required. Please provide a valid argument.",
          call. = FALSE)
   }
 
