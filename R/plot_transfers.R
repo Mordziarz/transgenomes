@@ -14,7 +14,7 @@
 #' @examples
 #' \dontrun{
 #' # After running transfer_function():
-#' plot_transfers(alignment_results, gap = 45, transparency = 0.5)
+#' plot_transfers(alignment_results, gap = 45, transparency = 0.5,color="green")
 #' }
 #' @importFrom circlize circos.par circos.initializeWithIdeogram circos.genomicLink
 
