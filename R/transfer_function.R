@@ -32,7 +32,8 @@
 #' }
 #' @export
 
-transfer_function <- function(fasta_q="",fasta_s="",bed_q=bed_q, bed_s=bed_s, evalue_cut_off=0.001) {
+transfer_function <- function(fasta_q="",fasta_s="",bed_q=bed_q, bed_s=bed_s, evalue_cut_off=0.001,
+                                                        cores=10) {
 
   if (base::missing(fasta_q)) {
     stop("The fasta_q predictions are required. Please provide a valid argument.",

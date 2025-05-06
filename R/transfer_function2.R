@@ -36,7 +36,8 @@
 #' }
 #' @export
 
-transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed_2=bed_2, bed_3=bed_3, evalue_cut_off=0.001) {
+transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed_2=bed_2, bed_3=bed_3, evalue_cut_off=0.001,
+                                                        cores=10) {
   
   if (base::missing(fasta_1)) {
     stop("The fasta_1 predictions are required. Please provide a valid argument.",
@@ -72,7 +73,8 @@ transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed
                                                         subject = fasta_2,
                                                         db.import = F,
                                                         task="blastn",
-                                                        evalue = evalue_cut_off)
+                                                        evalue = evalue_cut_off,
+                                                        cores=cores)
   
   blast_1$q_start <- as.numeric(blast_1$q_start)
   blast_1$s_start <- as.numeric(blast_1$s_start)
@@ -189,7 +191,8 @@ transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed
                                                         subject = fasta_3,
                                                         db.import = F,
                                                         task="blastn",
-                                                        evalue = evalue_cut_off)
+                                                        evalue = evalue_cut_off,
+                                                        cores=cores)
   
   blast_2$q_start <- as.numeric(blast_2$q_start)
   blast_2$s_start <- as.numeric(blast_2$s_start)
@@ -306,7 +309,8 @@ transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed
                                                       subject = fasta_3,
                                                       db.import = F,
                                                       task="blastn",
-                                                      evalue = evalue_cut_off)
+                                                      evalue = evalue_cut_off,
+                                                        cores=cores)
 
 blast_3$q_start <- as.numeric(blast_3$q_start)
 blast_3$s_start <- as.numeric(blast_3$s_start)
