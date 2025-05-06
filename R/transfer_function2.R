@@ -48,9 +48,6 @@ transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed
   if (!file.exists(fasta_1)) stop("fasta_1 file not found", call. = FALSE)
   if (!file.exists(fasta_2)) stop("fasta_2 file not found", call. = FALSE)
   if (!file.exists(fasta_3)) stop("fasta_3 file not found", call. = FALSE)
-  if (!file.exists(bed_1)) stop("bed_1 file not found", call. = FALSE)
-  if (!file.exists(bed_2)) stop("bed_2 file not found", call. = FALSE)
-  if (!file.exists(bed_3)) stop("bed_3 file not found", call. = FALSE)
   
   if (file.size(fasta_1) == 0) stop("fasta_1 is empty", call. = FALSE)
   if (file.size(fasta_2) == 0) stop("fasta_2 is empty", call. = FALSE)
