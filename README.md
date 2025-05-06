@@ -82,6 +82,6 @@ circlize::circos.clear()
 Paper in preparation
 
 # Support
-Any issues connected with the transgenomes should be addressed to Mateusz Mazdziarz (mateusz.mazdziarz@uwm.edu.pl).
+Any issues connected with the transgenomes should be addressed to Mateusz Mazdziarz (mazdziarzm@uwm.edu.pl).
 
 # Usage in scientific papers
