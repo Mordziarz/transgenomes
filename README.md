@@ -64,21 +64,6 @@ circlize::circos.clear()
 
 ![Circular](inst/graphs/Ex_circos.png)
 
-# Combine 3 genomes
-
-A second function, transfer_function2(), was also created to facilitate the process of checking homology between the mitogenome, chloroplast, and nuclear genome.
-
-```r
-transfer_function2(fasta_1="",
-                    fasta_2="",
-                    fasta_3="",
-                    bed_1=bed_1, 
-                    bed_2=bed_2, 
-                    bed_3=bed_3, 
-                    evalue_cut_off=0.001,
-                    cores=10)
-```
-
 # Citation
 
 Paper in preparation
