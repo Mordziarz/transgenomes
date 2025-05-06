@@ -1,37 +1,51 @@
-#' Creating a table based on the blastn result
+#' Annotate BLASTn alignments with overlapping gene features
 #'
-#' @param fasta_q query fasta
-#' @param fasta_s subject fasta
-#' @param bed_q query species bed
-#' @param bed_s subject species bed
-#' @param evalue_cutt_off blastn cut-off value
+#' Performs nucleotide BLAST alignment, adjusts coordinates for directionality,
+#' and annotates results with overlapping gene features from BED files.
 #'
-#' @return A plot and table
+#' @param fasta_q Path to query FASTA file (required)
+#' @param fasta_s Path to subject FASTA file (required)
+#' @param bed_q query species BED file (required)
+#' @param bed_s subject species BED file (required)
+#' @param evalue_cut_off Maximum e-value threshold for BLAST hits (default: 0.001)
+#'
+#' @return A data frame containing:
+#' - BLAST alignment details
+#' - Annotated overlapping genes from query and subject
+#' - Relative positions of overlaps in format: "gene (full_length/overlap_length)"
+#' 
+#' @details
+#' ## Requirements
+#' - All input files must exist and be non-empty
+#' - BED files must contain at least 4 columns (chrom, start, end, name)
+#' - Requires `metablastr` package
+#'
+#' @examples
+#' \dontrun{
+#' result <- transfer_function(
+#'   fasta_q = "query_genome.fna",
+#'   fasta_s = "subject_genome.fna",
+#'   bed_q = "query_genes.bed",
+#'   bed_s = "subject_genes.bed",
+#'   evalue_cut_off = 1e-5
+#' )
+#' }
 #' @export
-#'
-
 
 transfer_function <- function(fasta_q="",fasta_s="",bed_q=bed_q, bed_s=bed_s, evalue_cut_off=0.001) {
 
-  if (base::missing(fasta_q)) {
-    stop("The fasta_q predictions are required. Please provide a valid argument.",
-         call. = FALSE)
-  }
-
-  if (base::missing(fasta_s)) {
-    stop("The fasta_s predictions are required. Please provide a valid argument.",
-         call. = FALSE)
-  }
-
-  if (base::missing(bed_q)) {
-    stop("The bed_q predictions are required. Please provide a valid argument.",
-         call. = FALSE)
-  }
-
-  if (base::missing(bed_s)) {
-    stop("The bed_s predictions are required. Please provide a valid argument.",
-         call. = FALSE)
-  }
+  if (missing(fasta_q)) stop("Query FASTA (fasta_q) is required", call. = FALSE)
+  if (missing(fasta_s)) stop("Subject FASTA (fasta_s) is required", call. = FALSE)
+  if (missing(bed_q)) stop("Query BED (bed_q) is required", call. = FALSE)
+  if (missing(bed_s)) stop("Subject BED (bed_s) is required", call. = FALSE)
+  
+  if (!file.exists(fasta_q)) stop("Query FASTA file not found", call. = FALSE)
+  if (!file.exists(fasta_s)) stop("Subject FASTA file not found", call. = FALSE)
+  if (!file.exists(bed_q)) stop("Query BED file not found", call. = FALSE)
+  if (!file.exists(bed_s)) stop("Subject BED file not found", call. = FALSE)
+  
+  if (file.size(fasta_q) == 0) stop("Query FASTA is empty", call. = FALSE)
+  if (file.size(fasta_s) == 0) stop("Subject FASTA is empty", call. = FALSE)
 
   blast_n <- metablastr::blast_nucleotide_to_nucleotide(query = fasta_q,
                                                         subject =fasta_s,

@@ -1,19 +1,32 @@
-#' Creating a circular plot based on the transfer_function() result
+#' Create a Circular Visualization for Genomic Alignment Data
 #'
-#' @param transfer_function_out Output from transfer_function()
-#' @param gap Gap between two neighbour sectors.
-#' @param start_degree The starting degree from which the circle begins to draw.
-#' @param transparency Transparency of links
+#' Generates a Circos plot to visualize genomic alignments between query and subject sequences using output from `transfer_function()`.
 #'
-#' @return A plot
+#' @param transfer_function_out A data frame from [transfer_function()] containing alignment data. Must include columns: `query_id`, `subject_id`, `q_start`, `q_end`, `s_start`, `s_end`, `q_len`, `s_len`.
+#' @param gap Numeric (30-100). Space between genome tracks in degrees (default: 40).
+#' @param start_degree Numeric (0-360). Initial rotation angle for the circular plot (default: 90).
+#' @param transparency Numeric (0-1). Opacity of alignment ribbons (0 = fully transparent, 1 = opaque, default: 0.7).
+#'
+#' @return Circos plot visualizing genomic alignments
 #' @export
 #'
-#'
+#' @examples
+#' \dontrun{
+#' # After running transfer_function():
+#' plot_transfers(alignment_results, gap = 45, transparency = 0.5)
+#' }
+#' @importFrom circlize circos.par circos.initializeWithIdeogram circos.genomicLink
+#' @importFrom grDevices rgb
+
 plot_transfers <- function(transfer_function_out = transfer_function_out, gap=40, start_degree=90,transparency=0.7) {
 
-  if (base::missing(transfer_function_out)) {
-    stop("The transfer_function_out predictions are required. Please provide a valid argument.",
-         call. = FALSE)
+  if (missing(transfer_function_out)) {
+    stop("Required argument 'transfer_function_out' is missing. Provide output from transfer_function().", call. = FALSE)
+  }
+  
+  required_cols <- c("query_id", "subject_id", "q_start", "q_end", "s_start", "s_end", "q_len", "s_len")
+  if (!all(required_cols %in% colnames(transfer_function_out))) {
+    stop("Input data missing required columns. Verify transfer_function() output structure.", call. = FALSE)
   }
 
   blast_n <- base::as.data.frame(transfer_function_out)
