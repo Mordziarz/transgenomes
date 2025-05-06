@@ -94,7 +94,7 @@ transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed
   blast_1$s_end <- blast_1$s_end1
   
   blast_1$q_start1 <- NULL
-  blast_n$s_start1 <- NULL
+  blast_1$s_start1 <- NULL
   
   blast_1$q_end1 <- NULL
   blast_1$s_end1 <- NULL
@@ -211,7 +211,7 @@ transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed
   blast_2$s_end <- blast_2$s_end1
   
   blast_2$q_start1 <- NULL
-  blast_n$s_start1 <- NULL
+  blast_2$s_start1 <- NULL
   
   blast_2$q_end1 <- NULL
   blast_2$s_end1 <- NULL
@@ -328,7 +328,7 @@ transfer_function2 <- function(fasta_1="",fasta_2="",fasta_3="",bed_1=bed_1, bed
   blast_3$s_end <- blast_3$s_end1
   
   blast_3$q_start1 <- NULL
-  blast_n$s_start1 <- NULL
+  blast_3$s_start1 <- NULL
   
   blast_3$q_end1 <- NULL
   blast_3$s_end1 <- NULL
