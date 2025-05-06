@@ -8,6 +8,7 @@
 #' @param bed_q query species BED file (required)
 #' @param bed_s subject species BED file (required)
 #' @param evalue_cut_off Maximum e-value threshold for BLAST hits (default: 0.001)
+#' @param cores Number of cores to use for parallel processing (default: 1)
 #'
 #' @return A data frame containing:
 #' - BLAST alignment details
@@ -27,7 +28,8 @@
 #'   fasta_s = "subject_genome.fna",
 #'   bed_q = "query_genes.bed",
 #'   bed_s = "subject_genes.bed",
-#'   evalue_cut_off = 1e-5
+#'   evalue_cut_off = 1e-5,
+#'   cores=4
 #' )
 #' }
 #' @export

@@ -10,6 +10,7 @@
 #' @param fasta_3 Path to the third subject FASTA file (required)
 #' @param bed_3 The third subject species BED file (required)
 #' @param evalue_cut_off Maximum e-value threshold for BLAST hits (default: 0.001)
+#' @param cores Number of cores to use for parallel processing (default: 1)
 #'
 #' @return A data frame containing:
 #' - BLAST alignment details
@@ -31,7 +32,8 @@
 #'   bed_1 = "bed_1",
 #'   bed_2 = "bed_2",
 #'   bed_3 = "bed_3",
-#'   evalue_cut_off = 1e-5
+#'   evalue_cut_off = 1e-5,
+#'   cores=4
 #' )
 #' }
 #' @export
