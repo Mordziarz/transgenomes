@@ -64,6 +64,32 @@ circlize::circos.clear()
 
 ![Circular](inst/graphs/Ex_circos.png)
 
+# Extract transfer regions
+
+The extract_regions() function allows you to extract FASTA sequences from transfer events. Simply provide the output of transfer_function() as the transfer_function_out argument, and specify the appropriate column names for IDs and coordinates.
+
+```r
+regions_s <- extract_regions(transfer_function_out = transfer_1,
+                              fasta_path = "inst/extdata/plastome.fasta",
+                              id_col = "subject_id",
+                              start_col = "s_start",
+                              end_col = "s_end")
+```
+
+# GC content
+
+You can easily compare the GC content between two sets of transfer regions using the analyze_GC_content() function. Group names and significance level can be customized. The function automatically selects the appropriate statistical test based on data distribution and provides a publication-ready plot with p-value annotation, as well as detailed test results.
+
+```r
+results_GC <- analyze_GC_content(extract_regions_1 = regions_s, 
+                                extract_regions_2 = regions_q,
+                                group1_name = "Plastome",
+                                group2_name = "Mitogenome",
+                                alpha=0.05)
+```
+
+![GC](inst/graphs/Ex_GC.png)
+
 # Citation
 
 Paper in preparation

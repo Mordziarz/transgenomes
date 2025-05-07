@@ -16,7 +16,12 @@ Imports:
 Suggests: 
     testthat,
     knitr,
-    rmarkdown
+    rmarkdown,
+    Biostrings,
+    dplyr,
+    rstatix,
+    ggplot2,
+    car
 RoxygenNote: 7.3.1
 BugReports: https://github.com/Mordziarz/transgenomes/issues
 URL: https://github.com/Mordziarz/transgenomes
