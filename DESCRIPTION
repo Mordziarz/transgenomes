@@ -12,16 +12,17 @@ Depends:
     R (>= 4.0.0)
 Imports: 
     metablastr,
-    circlize
-Suggests: 
-    testthat,
-    knitr,
-    rmarkdown,
+    circlize,
     Biostrings,
     dplyr,
     rstatix,
     ggplot2,
-    car
+    car,
+    ggpubr
+Suggests: 
+    testthat,
+    knitr,
+    rmarkdown
 RoxygenNote: 7.3.1
 BugReports: https://github.com/Mordziarz/transgenomes/issues
 URL: https://github.com/Mordziarz/transgenomes

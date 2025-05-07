@@ -5,6 +5,12 @@ library(transgenomes)
 
 library(circlize)
 library(metablastr)
+library(Biostrings)
+library(dplyr)
+library(rstatix)
+library(ggplot2)
+library(car)
+library(ggpubr)
 
 setwd("path/to/transgenomes/dir")
 
