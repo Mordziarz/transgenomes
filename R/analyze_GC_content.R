@@ -106,7 +106,8 @@ analyze_GC_content <- function(
       y = "GC Content (%)",
       x = "Group"
     ) +
-    theme_minimal()
+    theme_minimal() +
+    theme(legend.position = "none")
   
   list(
     plot = gc_plot,
