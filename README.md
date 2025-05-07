@@ -86,6 +86,12 @@ results_GC <- analyze_GC_content(extract_regions_1 = regions_s,
                                 group1_name = "Plastome",
                                 group2_name = "Mitogenome",
                                 alpha=0.05)
+
+results_GC$plot
+results_GC$test_result
+results_GC$normality_check
+results_GC$test_method
+results_GC$gc_data
 ```
 
 ![GC](inst/graphs/Ex_GC.png)
