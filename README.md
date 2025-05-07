@@ -15,6 +15,12 @@ To use all features of the program, you will need several libraries.
 ```r
 library(metablastr)
 library(circlize)
+library(Biostrings)
+library(dplyr)
+library(rstatix)
+library(ggplot2)
+library(car)
+library(ggpubr)
 ```
 
 # Input data 
