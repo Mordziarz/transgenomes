@@ -31,3 +31,29 @@ circlize::circos.clear()
 png("Ex_circos.png", width=5, height=5, units = "in", res = 300)
 transgenomes::plot_transfers(transfer_function_out = transfer_1,color = "green4")
 dev.off()
+
+test_s <- transgenomes::extract_regions(transfer_function_out = transfer_1,
+                              fasta_path = "inst/extdata/plastome.fasta",
+                              id_col = "subject_id",
+                              start_col = "s_start",
+                              end_col = "s_end")
+
+test_q <- transgenomes::extract_regions(transfer_function_out = transfer_1,
+                              fasta_path = "inst/extdata/mitogenome.fasta",
+                              id_col = "query_id",
+                              start_col = "q_start",
+                              end_col = "q_end")
+
+
+
+results_GC <- transgenomes::analyze_GC_content(extract_regions_1 = test_s, extract_regions_2 = test_q,group1_name = "Plastome",group2_name = "Mitogenome",alpha = 0.05)
+
+results_GC$plot
+results_GC$test_result
+results_GC$normality_check
+results_GC$test_method
+results_GC$gc_data
+
+png("Ex_GC.png", width=5, height=5, units = "in", res = 300)
+results_GC$plot
+dev.off()
