@@ -40,11 +40,11 @@ V4 - Gene name
 
 ```r
 transfer_function_out <- transfer_function(fasta_q = "fasta_q.fasta",
-                  fasta_s = "fasta_s.fasta",
-                  bed_q = bed_q,
-                  bed_s = bed_s,
-                  evalue_cut_off = 0.0001,
-                  cores = 10)
+                                            fasta_s = "fasta_s.fasta",
+                                            bed_q = bed_q,
+                                            bed_s = bed_s,
+                                            evalue_cut_off = 0.0001,
+                                            cores = 10)
 ```
 
 The transfer_function() function produced an output table enriched with annotations for genes that had undergone partial or complete transfer to the second genome. The q_genes and s_genes columns within this table provided details about these transfers. For instance, the entry "genes: atp1 (1530)/(790)" indicated that the gene atp1, with a total length of 1530 nucleotides, had been transferred, and the transferred portion was 790 nucleotides long.
