@@ -101,7 +101,7 @@ analyze_GC_content <- function(
       inherit.aes = FALSE
     ) +
     labs(
-      title = "GC Content Comparison with Automatic Test Selection",
+      title = "GC Content Comparison",
       subtitle = test_result$method,
       y = "GC Content (%)",
       x = "Group"
