@@ -39,7 +39,7 @@ V4 - Gene name
 | Mitogenome  | 270  |   342 |   trnN    |
 
 ```r
-transfer_function(fasta_q = "fasta_q.fasta",
+transfer_function_out <- transfer_function(fasta_q = "fasta_q.fasta",
                   fasta_s = "fasta_s.fasta",
                   bed_q = bed_q,
                   bed_s = bed_s,
