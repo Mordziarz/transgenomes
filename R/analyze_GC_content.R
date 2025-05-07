@@ -93,7 +93,7 @@ analyze_GC_content <- function(
   gc_plot <- ggplot(gc_data, aes(x = group, y = GC, fill = group)) +
     geom_boxplot(alpha = 0.7, width = 0.5, outlier.shape = NA) +
     geom_jitter(width = 0.2, alpha = 0.4, aes(color = group), size = 2) +
-    rstatix::stat_pvalue_manual(
+    ggpubr::stat_pvalue_manual(
       pval_position,
       label = "method\np = {p}",
       tip.length = 0.01,
