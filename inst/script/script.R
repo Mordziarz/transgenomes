@@ -64,7 +64,7 @@ results_GC$plot
 dev.off()
 
 #### Transfers with nuclear genome
-tabela <- transfer_function_nuclear(fasta_nuc = "path/to/nuclear/fasta",
+transfer_function_nuclear_out <- transfer_function_nuclear(fasta_nuc = "path/to/nuclear/fasta",
                                          fasta_mt ="/path/to/mitochondrion/fasta" ,
                                          fasta_pt = "path/to/plastid/fasta",
                                          bed_nuc = bed_nuc,
@@ -77,13 +77,13 @@ tabela <- transfer_function_nuclear(fasta_nuc = "path/to/nuclear/fasta",
                                          trans_buffer = 20)
 
 
-regions_nuc <- extract_regions(transfer_function_out = tabela,
+regions_nuc <- extract_regions(transfer_function_out = transfer_function_nuclear_out,
                              fasta_path = "path/to/nuclear/fasta")
 
-regions_mt <- extract_regions(transfer_function_out = tabela,
+regions_mt <- extract_regions(transfer_function_out = transfer_function_nuclear_out,
                                fasta_path = "/path/to/mitochondrion/fasta")
 
-regions_pt <- extract_regions(transfer_function_out = tabela,
+regions_pt <- extract_regions(transfer_function_out = transfer_function_nuclear_out,
                                fasta_path = "path/to/plastid/fasta")
 
 
