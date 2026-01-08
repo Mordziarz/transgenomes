@@ -73,7 +73,7 @@ dev.off()
 circlize::circos.clear()
 ```
 
-![Circular](inst/graphs/Ex_circos.png)
+![Circular](inst/graphs/Ex_circos_main.png)
 
 # Extract transfer regions
 
