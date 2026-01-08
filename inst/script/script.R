@@ -31,7 +31,12 @@ table(bed_s$V4)
 
 transfer_1 <- transgenomes::transfer_function(fasta_mt = "inst/extdata/mitogenome.fasta",
                                               fasta_pt = "inst/extdata/plastome.fasta",
-                                        bed_mt = bed_q ,bed_pt = bed_s,evalue_cut_off = 0.00001)
+                                        bed_mt = bed_q ,bed_pt = bed_s,
+                                        evalue_cut_off = 0.000001,
+                                        gene_buffer = 20,
+                                        trans_buffer = 20,
+                                        min_identity = 70,
+                                        min_length = 100)
 
 circlize::circos.clear()
 png("Ex_circos.png", width=6, height=6, units = "in", res = 300)
@@ -39,16 +44,10 @@ transgenomes::plot_transfers(transfer_function_out = transfer_1)
 dev.off()
 
 test_s <- transgenomes::extract_regions(transfer_function_out = transfer_1,
-                              fasta_path = "inst/extdata/plastome.fasta",
-                              id_col = "subject_id",
-                              start_col = "s_start",
-                              end_col = "s_end")
+                              fasta_path = "inst/extdata/plastome.fasta")
 
 test_q <- transgenomes::extract_regions(transfer_function_out = transfer_1,
-                              fasta_path = "inst/extdata/mitogenome.fasta",
-                              id_col = "query_id",
-                              start_col = "q_start",
-                              end_col = "q_end")
+                              fasta_path = "inst/extdata/mitogenome.fasta")
 
 
 
