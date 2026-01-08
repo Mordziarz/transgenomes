@@ -104,6 +104,6 @@ results_GC$gc_data
 Paper in preparation
 
 # Support
-Any issues connected with the transgenomes should be addressed to Mateusz Mazdziarz (mazdziarzm@gmail.com).
+Any issues connected with the transgenomes should be addressed to Mateusz Mazdziarz (mateusz.mazdziarz@uwm.edu.pl).
 
 # Usage in scientific papers
