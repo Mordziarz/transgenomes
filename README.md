@@ -69,14 +69,11 @@ circlize::circos.clear()
 
 # Extract transfer regions
 
-The extract_regions() function allows you to extract FASTA sequences from transfer events. Simply provide the output of transfer_function() as the transfer_function_out argument, and specify the appropriate column names for IDs and coordinates.
+The extract_regions() function allows you to extract FASTA sequences from transfer events. Simply provide the output of transfer_function() as the transfer_function_out argument.
 
 ```r
 regions_s <- extract_regions(transfer_function_out = transfer_1,
-                              fasta_path = "inst/extdata/plastome.fasta",
-                              id_col = "subject_id",
-                              start_col = "s_start",
-                              end_col = "s_end")
+                              fasta_path = "inst/extdata/plastome.fasta")
 ```
 
 # GC content
