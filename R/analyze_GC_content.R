@@ -104,10 +104,10 @@ analyze_GC_content <- function(
       title = "GC Content Comparison",
       subtitle = test_result$method,
       y = "GC Content (%)",
-      x = "Group"
+      x = "Genomic Source"
     ) +
     theme_minimal() +
-    theme(legend.position = "none")
+    theme(legend.position = "none", plot.title = element_text(face = "bold"))
   
   list(
     plot = gc_plot,

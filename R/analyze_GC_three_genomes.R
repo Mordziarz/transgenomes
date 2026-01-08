@@ -65,7 +65,7 @@ analyze_GC_three_genomes <- function(
     scale_fill_manual(values = c("MT" = "#ff7f0e", "PT" = "#2ca02c", "NUC" = "#1f77b4")) +
     scale_color_manual(values = c("MT" = "#ff7f0e", "PT" = "#2ca02c", "NUC" = "#1f77b4")) +
     labs(
-      title = "GC Content Comparison Across Genomes",
+      title = "GC Content Comparison",
       subtitle = paste("Method:", method),
       y = "GC Content (%)",
       x = "Genomic Source"

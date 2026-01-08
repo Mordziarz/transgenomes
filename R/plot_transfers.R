@@ -127,8 +127,8 @@ plot_transfers <- function(transfer_function_out,
                    fill = c(mt_to_pt_col, pt_to_mt_col, unknown_col), 
                    title = expression(bold("Transfer Direction")), bty = "n", cex = 0.7)
   
-  graphics::legend(x = -1.3, y = -1.0, 
-                   legend = c("Mitochondrion", "Plastid"), 
+  graphics::legend(x = -1.3, y = -1.1, 
+                   legend = c("Mitogenome", "Plastome"), 
                    fill = c(mt_sector_col, pt_sector_col), 
                    title = expression(bold("Genomes")), bty = "n", cex = 0.7)
   
