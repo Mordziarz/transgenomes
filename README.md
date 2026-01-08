@@ -48,7 +48,15 @@ transfer_function_out <- transfer_function(fasta_mt = "fasta_q.fasta",
                                             trans_buffer = 20)
 ```
 
-The transfer_function() identifies intergenomic transfers by comparing BLASTn alignments against Mitochondrial (MT) and Plastid (PT) feature sets. For each alignment, the function calculates gene completeness (g_perc) and transfer dominance (t_perc) for both genomes, recorded in the mt_genes and pt_genes columns (e.g., atp1 (g_len=1530, ov_len=790, g_perc=51.6%, t_perc=98.5%)). Crucially, the algorithm ignores tRNA genes (filtered via regex ^trn|tRNA) when determining direction, as these highly conserved sequences are often non-diagnostic for transfer events. The final direction—stored in the direction column as MT -> PT, PT -> MT, or unknown—is determined by comparing the maximum metrics from both sides. A transfer is assigned if the difference in completeness exceeds the gene_buffer or if the difference in dominance exceeds the trans_buffer. All decisions, including cases where regions are intergenic or metrics are too ambiguous to reach a conclusion, are fully documented in a dedicated reason column.
+The transfer_function() identifies intergenomic transfers by comparing BLASTn alignments against Mitochondrial (MT) and Plastid (PT) feature sets. For each alignment, the function calculates cumulative gene completeness (sum_g_perc) and transfer dominance (sum_t_perc) for both genomes. These metrics are recorded in the mt_genes and pt_genes columns, providing detailed information for each overlapping feature (e.g., atp1 (g_len=1530, ov_len=790, g_perc=51.6%, t_perc=98.5%)).
+
+Crucially, the algorithm ignores tRNA genes (filtered via regex ^trn|tRNA) when determining direction, as these highly conserved sequences are often non-diagnostic for specific transfer events. The final direction—stored in the direction column as MT -> PT, PT -> MT, or unknown—is determined by a two-step comparison of the cumulative metrics:
+
+    1. Gene Completeness: A transfer is assigned if the difference between the MT and PT cumulative gene completeness exceeds the gene_buffer.
+
+    2. Transfer Dominance: If the gene completeness is ambiguous, the direction is determined if the difference in dominance (the proportion of the     alignment covered by any genes) exceeds the trans_buffer.
+
+All decisions, including cases where regions are strictly intergenic or where differences remain below the specified buffers, result in an "unknown" classification to ensure high-confidence results.
 
 # Visualization
 
