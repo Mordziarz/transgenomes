@@ -29,9 +29,9 @@ colnames(bed_s) <- c("V1","V2","V3","V4")
 
 table(bed_s$V4)
 
-transfer_1 <- transgenomes::transfer_function(fasta_q = "inst/extdata/mitogenome.fasta",
-                                              fasta_s = "inst/extdata/plastome.fasta",
-                                        bed_q = bed_q ,bed_s = bed_s,evalue_cut_off = 0.00001)
+transfer_1 <- transgenomes::transfer_function(fasta_mt = "inst/extdata/mitogenome.fasta",
+                                              fasta_pt = "inst/extdata/plastome.fasta",
+                                        bed_mt = bed_q ,bed_pt = bed_s,evalue_cut_off = 0.00001)
 
 circlize::circos.clear()
 png("Ex_circos.png", width=6, height=6, units = "in", res = 300)
