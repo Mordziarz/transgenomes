@@ -34,8 +34,8 @@ transfer_1 <- transgenomes::transfer_function(fasta_q = "inst/extdata/mitogenome
                                         bed_q = bed_q ,bed_s = bed_s,evalue_cut_off = 0.00001)
 
 circlize::circos.clear()
-png("Ex_circos.png", width=5, height=5, units = "in", res = 300)
-transgenomes::plot_transfers(transfer_function_out = transfer_1,color = "green4")
+png("Ex_circos.png", width=6, height=6, units = "in", res = 300)
+transgenomes::plot_transfers(transfer_function_out = transfer_1)
 dev.off()
 
 test_s <- transgenomes::extract_regions(transfer_function_out = transfer_1,
