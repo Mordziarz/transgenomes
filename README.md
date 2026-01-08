@@ -152,6 +152,16 @@ For each gene identified in the columns above, the following metrics are provide
 - **g_perc (Gene Completeness)**: Percentage of the total gene length present in this transfer.
 - **t_perc (Transfer Dominance)**: Percentage of this specific BLAST hit occupied by this gene.
 
+## GC content NUC-PT-MT
+
+```r
+results_GC <- analyze_GC_three_genomes(extract_regions_mt = regions_mt,
+                                       extract_regions_pt = regions_pt,
+                                       extract_regions_nuc= regions_nuc)
+```
+
+![GC_3genomes](inst/graphs/Ex_GC_3_genomes.png)
+
 # Citation
 
 Paper in preparation
