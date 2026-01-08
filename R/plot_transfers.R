@@ -125,12 +125,12 @@ plot_transfers <- function(transfer_function_out,
   graphics::legend(x = -1.3, y = -0.7, 
                    legend = c("MT -> PT", "PT -> MT", "Unknown"), 
                    fill = c(mt_to_pt_col, pt_to_mt_col, unknown_col), 
-                   title = expression(bold("Transfer Direction"), bty = "n", cex = 0.7)
+                   title = expression(bold("Transfer Direction")), bty = "n", cex = 0.7)
   
   graphics::legend(x = -1.3, y = -1.0, 
                    legend = c("Mitochondrion", "Plastid"), 
                    fill = c(mt_sector_col, pt_sector_col), 
-                   title = expression(bold("Genomes"), bty = "n", cex = 0.7)
+                   title = expression(bold("Genomes")), bty = "n", cex = 0.7)
   
   message("Plot created with maximized circle and side-by-side legends.")
 }
