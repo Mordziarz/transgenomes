@@ -39,7 +39,7 @@ transfer_1 <- transgenomes::transfer_function(fasta_mt = "inst/extdata/mitogenom
                                         min_length = 100)
 
 circlize::circos.clear()
-png("Ex_circos.png", width=6, height=6, units = "in", res = 300)
+png("Ex_circos.png", width=6, height=7, units = "in", res = 300)
 transgenomes::plot_transfers(transfer_function_out = transfer_1)
 dev.off()
 
