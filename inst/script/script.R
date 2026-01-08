@@ -63,3 +63,31 @@ results_GC$gc_data
 png("Ex_GC.png", width=5, height=5, units = "in", res = 300)
 results_GC$plot
 dev.off()
+
+#### Transfers with nuclear genome
+tabela <- transfer_function_nuclear(fasta_nuc = "path/to/nuclear/fasta",
+                                         fasta_mt ="/path/to/mitochondrion/fasta" ,
+                                         fasta_pt = "path/to/plastid/fasta",
+                                         bed_nuc = bed_nuc,
+                                         bed_mt = bed_mt,
+                                         bed_pt = bed_pt,
+                                         min_length = 100,
+                                         evalue_cut_off = 0.000001,
+                                         min_identity = 70,
+                                         gene_buffer = 20,
+                                         trans_buffer = 20)
+
+
+regions_nuc <- extract_regions(transfer_function_out = tabela,
+                             fasta_path = "path/to/nuclear/fasta")
+
+regions_mt <- extract_regions(transfer_function_out = tabela,
+                               fasta_path = "/path/to/mitochondrion/fasta")
+
+regions_pt <- extract_regions(transfer_function_out = tabela,
+                               fasta_path = "path/to/plastid/fasta")
+
+
+analyze_GC_three_genomes_our <- analyze_GC_three_genomes(extract_regions_mt = regions_mt,
+                                                         extract_regions_pt = regions_pt,
+                                                         extract_regions_nuc=regions_nuc)
