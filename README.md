@@ -35,30 +35,27 @@ V4 - Gene name
 
 | V1  | V2 | V3 |   V4  |
 | -------- | ----- |    -----   |   -----   |
-| Mitogenome  | 0  | 74  | trnD1 |
-| Mitogenome  | 270  |   342 |   trnN    |
+| OR220799.1  | 0  | 74  | trnD1 |
+| OR220799.1  | 270  |   342 |   trnN    |
 
 ```r
-transfer_function_out <- transfer_function(fasta_q = "fasta_q.fasta",
-                                            fasta_s = "fasta_s.fasta",
-                                            bed_q = bed_q,
-                                            bed_s = bed_s,
-                                            evalue_cut_off = 0.0001,
-                                            cores = 10)
+transfer_function_out <- transfer_function(fasta_mt = "fasta_q.fasta",
+                                            fasta_pt = "fasta_s.fasta",
+                                            bed_mt = bed_q,
+                                            bed_pt = bed_s,
+                                            evalue_cut_off = 0.0001 
+                                            gene_buffer = 20, 
+                                            trans_buffer = 20)
 ```
 
-The transfer_function() function produced an output table enriched with annotations for genes that had undergone partial or complete transfer to the second genome. The q_genes and s_genes columns within this table provided details about these transfers. For instance, the entry "genes: atp1 (1530)/(790)" indicated that the gene atp1, with a total length of 1530 nucleotides, had been transferred, and the transferred portion was 790 nucleotides long.
+The transfer_function() identifies intergenomic transfers by comparing BLASTn alignments against Mitochondrial (MT) and Plastid (PT) feature sets. For each alignment, the function calculates gene completeness (g_perc) and transfer dominance (t_perc) for both genomes, recorded in the mt_genes and pt_genes columns (e.g., atp1 (g_len=1530, ov_len=790, g_perc=51.6%, t_perc=98.5%)). Crucially, the algorithm ignores tRNA genes (filtered via regex ^trn|tRNA) when determining direction, as these highly conserved sequences are often non-diagnostic for transfer events. The final direction—stored in the direction column as MT -> PT, PT -> MT, or unknown—is determined by comparing the maximum metrics from both sides. A transfer is assigned if the difference in completeness exceeds the gene_buffer or if the difference in dominance exceeds the trans_buffer. All decisions, including cases where regions are intergenic or metrics are too ambiguous to reach a conclusion, are fully documented in a dedicated reason column.
 
 # Visualization
 
 The program generated a basic visualization using the circlize package (https://github.com/jokergoo/circlize). This visualization was created based on the output from the transfer_function() function.
 
 ```r
-plot_transfers(transfer_function_out = transfer_function_out,
-                gap=40,
-                start_degree=90,
-                transparency=0.7,
-                color="green")
+plot_transfers(transfer_function_out = transfer_function_out)
 ```
 
 Useful functions for image cleaning in R
