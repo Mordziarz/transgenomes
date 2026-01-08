@@ -60,8 +60,7 @@ analyze_GC_three_genomes <- function(
       stat_p_plot, 
       label = "p.adj.signif", 
       hide.ns = FALSE,
-      tip.length = 0.01,
-      bracket.nudge.y = 2
+      tip.length = 0.01
     ) +
     scale_fill_manual(values = c("MT" = "#ff7f0e", "PT" = "#2ca02c", "NUC" = "#1f77b4")) +
     scale_color_manual(values = c("MT" = "#ff7f0e", "PT" = "#2ca02c", "NUC" = "#1f77b4")) +
