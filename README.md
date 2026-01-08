@@ -99,6 +99,62 @@ results_GC$gc_data
 
 ![GC](inst/graphs/Ex_GC.png)
 
+# Nuclear genome
+
+I have enabled users to analyze DNA transfers between the chloroplast, mitochondrion, and nuclear genomes.
+
+The transfer_function_nuclear identifies DNA sequence transfers by performing a three-way genomic comparison between mitochondrial (MT), plastid (PT), and nuclear (NUC) genomes. Using BLASTn as the alignment engine, the function filters hits based on user-defined thresholds for E-value, alignment length, and percent identity to eliminate non-specific sequence noise and incidental similarities.
+
+The core analytical strength lies in its multi-gene annotation engine: for every BLAST hit, the function identifies all overlapping genomic features from provided BED files. Instead of evaluating single genes in isolation, it aggregates (sums) coverage metrics across all features within the alignment boundaries. The direction of transfer (e.g., MT -> NUC) is determined by comparing the total gene completeness and alignment dominance between the query and subject sequences. If the cumulative gene coverage in one genome exceeds the other (controlled by the gene_buffer and trans_buffer parameters), a transfer direction is assigned. This approach is particularly robust for detecting large-scale transfers involving genomic clusters, while a specialized tRNA filter prevents highly conserved, non-diagnostic regions from biasing the results.
+
+```r
+transfer_function_nuclear_out <- transfer_function_nuclear(fasta_nuc = "path/to/nuclear/fasta",
+                                         fasta_mt ="path/to/mitochondrion/fasta" ,
+                                         fasta_pt = "path/to/plastid/fasta",
+                                         bed_nuc = bed_nuc,
+                                         bed_mt = bed_mt,
+                                         bed_pt = bed_pt,
+                                         min_length = 100,
+                                         evalue_cut_off = 0.000001,
+                                         min_identity = 70,
+                                         gene_buffer = 20,
+                                         trans_buffer = 20)
+```
+
+## Output Column Definitions
+
+| Column Name | Description |
+| :--- | :--- |
+| **query_id** | The identifier of the query sequence (e.g., Mitochondrial or Plastid scaffold). |
+| **subject_id** | The identifier of the reference sequence (e.g., Nuclear chromosome). |
+| **perc_identity** | Percentage of identical matches between the two sequences. |
+| **num_ident_matches** | Total number of identical nucleotides in the alignment. |
+| **alig_length** | Total length of the alignment (including gaps). |
+| **mismatches** | Number of mismatched nucleotides. |
+| **gap_openings** | Number of times a gap was opened in the alignment. |
+| **n_gaps** | Total number of gap characters (insertions/deletions). |
+| **pos_match** | Number of positive matches (identical residues for DNA). |
+| **ppos** | Percentage of positive-scoring matches. |
+| **q_start / q_end** | Start and end coordinates of the alignment on the **query** sequence. |
+| **q_len** | Total length of the query sequence. |
+| **qcov / qcovhsp** | Query coverage per hit and per high-scoring segment pair. |
+| **s_start / s_end** | Start and end coordinates of the alignment on the **subject** sequence. |
+| **s_len** | Total length of the subject sequence. |
+| **evalue** | The Expect value (significance of the hit; lower is better). |
+| **bit_score** | Statistical measure of the alignment quality (independent of database size). |
+| **direction** | **Predicted transfer direction** (e.g., `PT -> NUC`). Based on gene completeness and alignment dominance. |
+| **pt_genes** | Plastid genes overlapping the hit with detailed metrics. |
+| **mt_genes** | Mitochondrial genes overlapping the hit with detailed metrics. |
+| **nuc_genes** | Nuclear genes/features overlapping the hit with detailed metrics. |
+
+### Annotation Metrics Detail
+
+For each gene identified in the columns above, the following metrics are provided:
+- **g_len**: Total length of the gene in the reference BED file.
+- **ov_len**: Number of base pairs of the gene covered by the alignment.
+- **g_perc (Gene Completeness)**: Percentage of the total gene length present in this transfer.
+- **t_perc (Transfer Dominance)**: Percentage of this specific BLAST hit occupied by this gene.
+
 # Citation
 
 Paper in preparation
