@@ -25,7 +25,7 @@ library(ggpubr)
 
 # Input data 
 
-The transfer_function() function accepted two FASTA files (fasta_q and fasta_s) along with two BED files containing gene annotations (bed_q and bed_s). The evalue_cutoff parameter was used to specify the E-value threshold for BLAST results.
+The transfer_function() integrates mitochondrial and plastid sequence data by accepting two FASTA files (fasta_mt and fasta_pt) and their corresponding gene annotations in BED format (bed_mt and bed_pt). The function executes a BLASTn search using a specified evalue_cut_off, subsequently filtering results based on min_length and min_identity to ensure alignment quality. By cross-referencing these alignments with the BED files, it calculates gene coverage metrics to determine the direction of sequence transfer (MT -> PT or PT -> MT). This determination is based on whether the difference in gene coverage or transfer percentages exceeds the defined gene_buffer or trans_buffer, while specifically categorizing alignments consisting solely of tRNA genes as "unknown" to maintain biological accuracy.
 
 The bed should look like this: 
 V1 - Genome name,
@@ -43,8 +43,10 @@ transfer_function_out <- transfer_function(fasta_mt = "fasta_q.fasta",
                                             fasta_pt = "fasta_s.fasta",
                                             bed_mt = bed_q,
                                             bed_pt = bed_s,
-                                            evalue_cut_off = 0.0001 
-                                            gene_buffer = 20, 
+                                            min_length = 100,
+                                            evalue_cut_off = 0.000001,
+                                            min_identity = 70,
+                                            gene_buffer = 20,
                                             trans_buffer = 20)
 ```
 
