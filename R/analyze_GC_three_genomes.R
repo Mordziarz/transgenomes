@@ -75,7 +75,7 @@ analyze_GC_three_genomes <- function(
     ggplot2::scale_color_manual(values = c("MT" = "#ff7f0e", "PT" = "#2ca02c", "NUC" = "#1f77b4")) +
     ggplot2::labs(
       title = "GC Content Comparison Across Genomes",
-      subtitle = paste("Normality:", is_normal_all, "| Homoscedasticity:", is_homoscedastic, "\nMethod:", method),
+      subtitle = paste(method),
       y = "GC Content (%)",
       x = "Genomic Source"
     ) +
