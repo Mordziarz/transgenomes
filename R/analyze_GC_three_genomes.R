@@ -13,7 +13,7 @@ analyze_GC_three_genomes <- function(
     extract_regions_nuc,
     alpha = 0.05
 ) {
-
+  
   process_regions <- function(x) {
     if (is.null(x) || length(unlist(x)) == 0) return(numeric(0))
     Biostrings::letterFrequency(unlist(x), "GC", as.prob = TRUE) * 100
@@ -39,39 +39,48 @@ analyze_GC_three_genomes <- function(
       .groups = "drop"
     )
   
-  is_parametric <- all(norm_test$is_normal, na.rm = TRUE)
+  var_test <- gc_data %>% rstatix::levene_test(GC ~ group)
+  is_homoscedastic <- var_test$p > alpha
   
-  if (is_parametric) {
-    main_test <- gc_data %>% anova_test(GC ~ group)
-    post_hoc  <- gc_data %>% tukey_hsd(GC ~ group)
-    method    <- "ANOVA / Tukey HSD"
+  is_normal_all <- all(norm_test$is_normal, na.rm = TRUE)
+
+  if (is_normal_all) {
+    if (is_homoscedastic) {
+      main_test <- gc_data %>% rstatix::anova_test(GC ~ group)
+      post_hoc  <- gc_data %>% rstatix::tukey_hsd(GC ~ group)
+      method    <- "ANOVA / Tukey HSD"
+    } else {
+      main_test <- gc_data %>% rstatix::welch_anova_test(GC ~ group)
+      post_hoc  <- gc_data %>% rstatix::games_howell_test(GC ~ group)
+      method    <- "Welch ANOVA / Games-Howell"
+    }
   } else {
-    main_test <- gc_data %>% kruskal_test(GC ~ group)
-    post_hoc  <- gc_data %>% dunn_test(GC ~ group, p.adjust.method = "bonferroni")
+    main_test <- gc_data %>% rstatix::kruskal_test(GC ~ group)
+    post_hoc  <- gc_data %>% rstatix::dunn_test(GC ~ group, p.adjust.method = "bonferroni")
     method    <- "Kruskal-Wallis / Dunn's Test"
   }
   
-  stat_p_plot <- post_hoc %>% add_y_position(fun = "max", step.increase = 0.1)
+  stat_p_plot <- post_hoc %>% rstatix::add_y_position(fun = "max", step.increase = 0.12)
   
-  gc_plot <- ggplot(gc_data, aes(x = group, y = GC, fill = group)) +
-    geom_boxplot(alpha = 0.6, outlier.shape = NA, width = 0.5) +
-    geom_jitter(aes(color = group), width = 0.15, alpha = 0.4) +
-    stat_pvalue_manual(
+  gc_plot <- ggplot2::ggplot(gc_data, ggplot2::aes(x = group, y = GC, fill = group)) +
+    ggplot2::geom_boxplot(alpha = 0.6, outlier.shape = NA, width = 0.5) +
+    ggplot2::geom_jitter(ggplot2::aes(color = group), width = 0.15, alpha = 0.4) +
+    ggpubr::stat_pvalue_manual(
       stat_p_plot, 
       label = "p.adj.signif", 
       hide.ns = FALSE,
       tip.length = 0.01
     ) +
-    scale_fill_manual(values = c("MT" = "#ff7f0e", "PT" = "#2ca02c", "NUC" = "#1f77b4")) +
-    scale_color_manual(values = c("MT" = "#ff7f0e", "PT" = "#2ca02c", "NUC" = "#1f77b4")) +
-    labs(
-      title = "GC Content Comparison",
-      subtitle = paste("Method:", method),
+    ggplot2::scale_fill_manual(values = c("MT" = "#ff7f0e", "PT" = "#2ca02c", "NUC" = "#1f77b4")) +
+    ggplot2::scale_color_manual(values = c("MT" = "#ff7f0e", "PT" = "#2ca02c", "NUC" = "#1f77b4")) +
+    ggplot2::labs(
+      title = "GC Content Comparison Across Genomes",
+      subtitle = paste("Normality:", is_normal_all, "| Homoscedasticity:", is_homoscedastic, "\nMethod:", method),
       y = "GC Content (%)",
       x = "Genomic Source"
     ) +
-    theme_minimal() +
-    theme(legend.position = "none", plot.title = element_text(face = "bold"))
+    ggplot2::theme_minimal() +
+    ggplot2::theme(legend.position = "none", plot.title = element_text(face = "bold"))
   
   return(list(
     plot = gc_plot,
@@ -79,6 +88,7 @@ analyze_GC_three_genomes <- function(
     post_hoc = post_hoc,
     method = method,
     normality = norm_test,
+    variance = var_test,
     gc_data = gc_data
   ))
 }
