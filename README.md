@@ -173,6 +173,7 @@ results_GC <- analyze_GC_three_genomes(extract_regions_mt = regions_mt,
 results_GC$main_test
 results_GC$post_hoc
 results_GC$normality
+results_GC$variance
 results_GC$gc_data
 results_GC$plot
 results_GC$method
