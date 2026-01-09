@@ -80,7 +80,7 @@ plot_transfers <- function(transfer_function_out,
     start.degree = start_degree, 
     gap.after = rep(gap, nrow(full_genome_info)),
     canvas.xlim = c(-1.2, 1.2), 
-    canvas.ylim = c(-1.2, 1.2)
+    canvas.ylim = c(-1.5, 1.0)
   )
   
   circlize::circos.initialize(
