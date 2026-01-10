@@ -120,19 +120,33 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
       
       if (!is.null(nuc_validation_blast)) {
         tryCatch({
-          relevant_nuc_query <- nuc_validation_blast[nuc_validation_blast$query_id == blast_n$query_id[i], ]
-          relevant_nuc_subject <- nuc_validation_blast[nuc_validation_blast$query_id == blast_n$subject_id[i], ]
+          relevant_nuc_query <- NULL
+          relevant_nuc_subject <- NULL
           
-          if (nrow(relevant_nuc_query) > 0 && nrow(relevant_nuc_subject) > 0) {
+          if ((q_label == "MT" && s_label == "NUC") || (q_label == "PT" && s_label == "NUC")) {
+            relevant_nuc_query <- nuc_validation_blast[
+              nuc_validation_blast$query_id == blast_n$query_id[i], ]
+            relevant_nuc_subject <- nuc_validation_blast[
+              nuc_validation_blast$subject_id == blast_n$subject_id[i], ]
+          } else if (q_label == "MT" && s_label == "PT") {
+            relevant_nuc_query <- nuc_validation_blast[
+              nuc_validation_blast$query_id == blast_n$query_id[i], ]
+            relevant_nuc_subject <- nuc_validation_blast[
+              nuc_validation_blast$query_id == blast_n$subject_id[i], ]
+          }
+          
+          if (!is.null(relevant_nuc_query) && !is.null(relevant_nuc_subject) &&
+              nrow(relevant_nuc_query) > 0 && nrow(relevant_nuc_subject) > 0) {
             blast_n$nuclear_paralog_flag[i] <- "BOTH_ENDPOINTS_NUCLEAR"
             blast_n$direction[i] <- "Undefined (Both endpoints in nuclear)"
             next
           }
           
-          if (nrow(relevant_nuc_query) > 0) {
+          if (!is.null(relevant_nuc_query) && nrow(relevant_nuc_query) > 0) {
             nuc_q_start <- pmin(as.numeric(relevant_nuc_query$q_start), as.numeric(relevant_nuc_query$q_end))
             nuc_q_end   <- pmax(as.numeric(relevant_nuc_query$q_start), as.numeric(relevant_nuc_query$q_end))
-            nuc_cross <- relevant_nuc_query[nuc_q_start < blast_n$q_end_fix[i] & nuc_q_end > blast_n$q_start_fix[i], ]
+            nuc_cross <- relevant_nuc_query[
+              nuc_q_start < blast_n$q_end_fix[i] & nuc_q_end > blast_n$q_start_fix[i], ]
             
             if (nrow(nuc_cross) > 0) {
               best_nuc_idx <- which.max(as.numeric(nuc_cross$bit_score))
@@ -151,8 +165,8 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
                 if (nuc_density >= (nuclear_min_bit_score / 1000) && 
                     density_ratio >= nuclear_ratio_threshold) {
                   blast_n$nuclear_paralog_flag[i] <- paste0(
-                    "QUERY_NUCLEAR_RISK [NUC_density=", round(nuc_density, 2),
-                    " vs ", tolower(s_label), "_density=", round(cur_density, 2),
+                    "QUERY_NUCLEAR_RISK [NUC_dens=", round(nuc_density, 2),
+                    " vs ", tolower(s_label), "_dens=", round(cur_density, 2),
                     " ratio=", round(density_ratio, 2), "]")
                   blast_n$direction[i] <- "Undefined (Query nuclear paralog)"
                   next
@@ -161,10 +175,11 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
             }
           }
           
-          if (nrow(relevant_nuc_subject) > 0 && is.na(blast_n$nuclear_paralog_flag[i])) {
+          if (!is.null(relevant_nuc_subject) && nrow(relevant_nuc_subject) > 0 && is.na(blast_n$nuclear_paralog_flag[i])) {
             nuc_q_start <- pmin(as.numeric(relevant_nuc_subject$q_start), as.numeric(relevant_nuc_subject$q_end))
             nuc_q_end   <- pmax(as.numeric(relevant_nuc_subject$q_start), as.numeric(relevant_nuc_subject$q_end))
-            nuc_cross <- relevant_nuc_subject[nuc_q_start < blast_n$s_end_fix[i] & nuc_q_end > blast_n$s_start_fix[i], ]
+            nuc_cross <- relevant_nuc_subject[
+              nuc_q_start < blast_n$s_end_fix[i] & nuc_q_end > blast_n$s_start_fix[i], ]
             
             if (nrow(nuc_cross) > 0) {
               best_nuc_idx <- which.max(as.numeric(nuc_cross$bit_score))
@@ -183,8 +198,8 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
                 if (nuc_density >= (nuclear_min_bit_score / 1000) && 
                     density_ratio >= nuclear_ratio_threshold) {
                   blast_n$nuclear_paralog_flag[i] <- paste0(
-                    "SUBJECT_NUCLEAR_RISK [NUC_density=", round(nuc_density, 2),
-                    " vs ", tolower(q_label), "_density=", round(cur_density, 2),
+                    "SUBJECT_NUCLEAR_RISK [NUC_dens=", round(nuc_density, 2),
+                    " vs ", tolower(q_label), "_dens=", round(cur_density, 2),
                     " ratio=", round(density_ratio, 2), "]")
                   blast_n$direction[i] <- "Undefined (Subject nuclear paralog)"
                   next
@@ -201,8 +216,9 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         tryCatch({
           v_q_start <- pmin(as.numeric(validation_blast$q_start), as.numeric(validation_blast$q_end))
           v_q_end   <- pmax(as.numeric(validation_blast$q_start), as.numeric(validation_blast$q_end))
-          cross <- validation_blast[validation_blast$query_id == blast_n$query_id[i] & 
-                                     v_q_start < blast_n$q_end_fix[i] & v_q_end > blast_n$q_start_fix[i], ]
+          cross <- validation_blast[
+            validation_blast$query_id == blast_n$query_id[i] & 
+              v_q_start < blast_n$q_end_fix[i] & v_q_end > blast_n$q_start_fix[i], ]
           if (nrow(cross) > 0) {
             best_c_idx <- which.max(as.numeric(cross$bit_score))
             best_c <- cross[best_c_idx, ]
@@ -298,5 +314,6 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   
   return(final_df[, order_cols])
 }
+
 
 
