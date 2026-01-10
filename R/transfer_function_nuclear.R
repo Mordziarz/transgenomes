@@ -28,7 +28,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
                                       min_identity = 70,
                                       gene_buffer = 20, 
                                       trans_buffer = 20,
-                                      nuclear_bit_score_threshold = 0.85) {  # NOWY PARAMETR
+                                      nuclear_bit_score_threshold = 0.85) { 
   
   load_bed <- function(bed_input) {
     df <- if (is.character(bed_input)) read.table(bed_input, header = FALSE, stringsAsFactors = FALSE) else as.data.frame(bed_input)
@@ -46,7 +46,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   run_single_transfer <- function(q_fasta, s_fasta, q_bed, s_bed, q_label, s_label, 
                                   validation_blast = NULL, validation_label = "3rd genome",
                                   q_label_short = NULL, s_label_short = NULL,
-                                  nuc_validation_blast = NULL) {  # NOWY PARAMETR
+                                  nuc_validation_blast = NULL) {
     
     if (is.null(q_label_short)) q_label_short <- q_label
     if (is.null(s_label_short)) s_label_short <- s_label
