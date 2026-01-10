@@ -36,8 +36,10 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   b_mt  <- load_bed_local(bed_mt)
   b_pt  <- load_bed_local(bed_pt)
   
-  # Połączony regex dla tRNA i rRNA
-  non_coding_regex <- "^trn|tRNA|^rrn|rRNA|[0-9]+S_rRNA"
+  # Definicja regexów dla RNA
+  trna_regex <- "^trn|tRNA"
+  rrna_regex <- "^rrn|rRNA|[0-9]+S_rRNA"
+  non_coding_regex <- paste0(trna_regex, "|", rrna_regex)
 
   message("Running BLASTn (MT vs PT)...")
   blast_n <- metablastr::blast_nucleotide_to_nucleotide(
@@ -45,7 +47,10 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     db.import = FALSE, task = "blastn", evalue = evalue_cut_off
   )
   
-  if (nrow(blast_n) == 0) return(NULL)
+  if (nrow(blast_n) == 0) {
+    message("No BLAST hits found.")
+    return(NULL)
+  }
 
   blast_n$alig_length <- as.numeric(blast_n$alig_length)
   blast_n$perc_identity <- as.numeric(blast_n$perc_identity)
@@ -55,7 +60,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   
   if (nrow(blast_n) == 0) return(NULL)
 
-  # Przygotowanie koordynatów
   blast_n$q_id_low <- tolower(blast_n$query_id)
   blast_n$s_id_low <- tolower(blast_n$subject_id)
   blast_n$q_start_fix <- pmin(as.numeric(blast_n$q_start), as.numeric(blast_n$q_end))
@@ -75,38 +79,58 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
                         bed$end > hit[[b_start_col]], ]
       
       if (nrow(overlaps) == 0) {
-        return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, has_cds = FALSE))
+        return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, has_protein_coding = FALSE))
       }
       
-      # Sprawdzenie czy są geny kodujące (nie tRNA/rRNA)
+      # Sprawdzenie typu genów
       is_non_coding <- grepl(non_coding_regex, overlaps$name, ignore.case = TRUE)
-      has_cds <- any(!is_non_coding)
+      has_protein_coding <- any(!is_non_coding)
+      
+      # Logika unikalnych nukleotydów (rozwiązanie problemu nakładania się)
+      # Tworzymy wektor zakresów dla całego hitu
+      hit_range <- hit[[b_start_col]]:hit[[b_end_col]]
+      covered_indices <- integer(0)
       
       gene_results <- list()
       for(j in 1:nrow(overlaps)) {
-        g_len  <- overlaps$end[j] - overlaps$start[j]
-        ov_len <- max(0, min(overlaps$end[j], hit[[b_end_col]]) - max(overlaps$start[j], hit[[b_start_col]]))
+        g_start <- overlaps$start[j]
+        g_end   <- overlaps$end[j]
+        g_len   <- g_end - g_start
+        
+        # Fragment genu wewnątrz hitu
+        ov_start <- max(g_start, hit[[b_start_col]])
+        ov_end   <- min(g_end, hit[[b_end_col]])
+        ov_len   <- max(0, ov_end - ov_start)
+        
+        # Dodajemy unikalne pozycje do statystyki ogólnej
+        if(ov_len > 0) {
+          covered_indices <- union(covered_indices, ov_start:ov_end)
+        }
         
         g_perc <- (ov_len / g_len) * 100
         t_perc <- (ov_len / hit$alig_length) * 100
         
         gene_results[[j]] <- list(g_perc = g_perc, t_perc = t_perc, g_len = g_len, 
-                                  ov_len = ov_len, name = overlaps$name[j], is_cds = !is_non_coding[j])
+                                  ov_len = ov_len, name = overlaps$name[j])
       }
       
-      # Obliczanie sumy tylko dla CDS (rozwiązuje problem nakładania się z tRNA/rRNA)
-      cds_genes <- Filter(function(x) x$is_cds, gene_results)
-      sum_g_perc <- if(length(cds_genes) > 0) sum(sapply(cds_genes, function(x) x$g_perc)) else 0
-      sum_t_perc <- if(length(cds_genes) > 0) sum(sapply(cds_genes, function(x) x$t_perc)) else 0
+      # Obliczamy rzeczywisty procent pokrycia hitu przez geny (bez duplikacji nakładających się genów)
+      actual_overlap_sum <- length(covered_indices)
+      total_t_perc <- (actual_overlap_sum / hit$alig_length) * 100
+      # Dla sum_g_perc zachowujemy sumę relatywną (jak wcześniej), ale kierujemy się głównie unikalnością
+      sum_g_perc <- sum(sapply(gene_results, function(x) x$g_perc))
       
       res_text <- sapply(gene_results, function(x) {
-        paste0(x$name, " (ov=", round(x$ov_len, 0), ", g_perc=", round(x$g_perc, 1), "%)")
+        paste0(x$name, " (g_len=", x$g_len, 
+               ", ov_len=", round(x$ov_len, 0), 
+               ", g_perc=", round(x$g_perc, 1), "%, ",
+               "t_perc=", round(x$t_perc, 1), "%)")
       })
       
       return(list(text = paste(res_text, collapse = "; "), 
                   sum_g_perc = sum_g_perc, 
-                  sum_t_perc = sum_t_perc, 
-                  has_cds = has_cds))
+                  sum_t_perc = total_t_perc, 
+                  has_protein_coding = has_protein_coding))
     })
   }
 
@@ -116,37 +140,40 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   
   blast_n$mt_genes <- sapply(mt_ann, function(x) x$text)
   blast_n$pt_genes <- sapply(pt_ann, function(x) x$text)
-  blast_n$direction <- "unidentified"
+  blast_n$direction <- "Unidentified"
 
   for (i in 1:nrow(blast_n)) {
     m <- mt_ann[[i]]; p <- pt_ann[[i]]
     
-    # 1. Jeżeli tylko jedna strona ma gen kodujący białko - tam jest źródło
-    if (m$has_cds && !p$has_cds) {
+    # 1. Jeżeli tylko jeden kierunek ma geny kodujące białka - to jest nasz kierunek
+    if (m$has_protein_coding && !p$has_protein_coding) {
       blast_n$direction[i] <- "MT -> PT"
       next
     }
-    if (!m$has_cds && p$has_cds) {
+    if (!m$has_protein_coding && p$has_protein_coding) {
       blast_n$direction[i] <- "PT -> MT"
       next
     }
     
-    # 2. Jeżeli obie mają CDS lub obie nie mają, używamy bufora procentowego (tylko dla CDS)
-    if (m$has_cds && p$has_cds) {
-      g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
-      if (g_diff >= gene_buffer) {
-        blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) "MT -> PT" else "PT -> MT"
-      } else {
-        t_diff <- abs(m$sum_t_perc - p$sum_t_perc)
-        if (t_diff >= trans_buffer) {
-          blast_n$direction[i] <- if(m$sum_t_perc > p$sum_t_perc) "MT -> PT" else "PT -> MT"
-        }
+    # 2. Jeżeli oba to tylko RNA (lub oba mają białka), używamy statystyk procentowych
+    # Jeśli oba to tylko tRNA/rRNA, dajemy Unidentified (zgodnie z prośbą o traktowaniu tRNA i rRNA tak samo)
+    if (!m$has_protein_coding && !p$has_protein_coding) {
+      blast_n$direction[i] <- "Unidentified"
+      next
+    }
+    
+    # 3. Standardowa logika g_perc i t_perc dla przypadków spornych (np. oba mają kodujące białka)
+    g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
+    if (g_diff >= gene_buffer) {
+      blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) "MT -> PT" else "PT -> MT"
+    } else {
+      t_diff <- abs(m$sum_t_perc - p$sum_t_perc)
+      if (t_diff >= trans_buffer) {
+        blast_n$direction[i] <- if(m$sum_t_perc > p$sum_t_perc) "MT -> PT" else "PT -> MT"
       }
     }
-    # W innym przypadku zostaje "unidentified"
   }
 
-  # Czyszczenie
   cols_to_remove <- c("q_start_fix", "q_end_fix", "s_start_fix", "s_end_fix", "q_id_low", "s_id_low")
   blast_n <- blast_n[, !(names(blast_n) %in% cols_to_remove)]
   
