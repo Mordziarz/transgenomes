@@ -78,7 +78,10 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         hit <- df[i, ]
         overlaps <- bed[bed$chrom == hit[[chrom_col]] & bed$start < hit[[b_end_col]] & bed$end > hit[[b_start_col]], ]
         
-        if (nrow(overlaps) == 0) return(list(text = NA, sum_g_perc = 0, sum_t_perc = 0, only_trna = FALSE, only_rrna = FALSE, only_rna = FALSE))
+        if (nrow(overlaps) == 0) {
+          return(list(text = NA, sum_g_perc = NA, sum_t_perc = NA, 
+                      only_trna = FALSE, only_rrna = FALSE, only_rna = FALSE, has_genes = FALSE))
+        }
         
         is_trna <- grepl(trna_regex, overlaps$name, ignore.case = TRUE)
         is_rrna <- grepl(rrna_regex, overlaps$name, ignore.case = TRUE)
@@ -102,7 +105,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         })
         
         return(list(text = paste(res_text, collapse = "; "), sum_g_perc = sum_g_perc, sum_t_perc = sum_t_perc, 
-                    only_trna = all(is_trna), only_rrna = all(is_rrna), only_rna = all(is_any_rna)))
+                    only_trna = all(is_trna), only_rrna = all(is_rrna), only_rna = all(is_any_rna), has_genes = TRUE))
       })
     }
     
@@ -123,8 +126,22 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
           next
         }
       }
-
+      
       m <- q_ann[[i]]; p <- s_ann[[i]]
+      
+      q_has_genes <- !is.na(m$sum_g_perc) && m$has_genes
+      s_has_genes <- !is.na(p$sum_g_perc) && p$has_genes
+      
+      if (!q_has_genes && s_has_genes) {
+        blast_n$direction[i] <- paste(q_label, "->", s_label)
+        next
+      } else if (q_has_genes && !s_has_genes) {
+        blast_n$direction[i] <- paste(s_label, "->", q_label)
+        next
+      } else if (!q_has_genes && !s_has_genes) {
+        blast_n$direction[i] <- "Undefined (No genes)"
+        next
+      }
       
       if (m$only_rna && p$only_rna) {
         if (m$only_trna && p$only_trna) blast_n$direction[i] <- "Undefined (tRNA only)"
