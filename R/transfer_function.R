@@ -21,6 +21,7 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     stop("All input files are required.")
   }
 
+
   load_bed_local <- function(bed_input) {
     df <- if (is.character(bed_input)) read.table(bed_input, header = FALSE, stringsAsFactors = FALSE) else as.data.frame(bed_input)
     data.frame(
@@ -32,9 +33,12 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     )
   }
 
+
   b_mt  <- load_bed_local(bed_mt)
   b_pt  <- load_bed_local(bed_pt)
   trna_regex <- "^trn|tRNA"
+  rrna_regex <- "^rrn|rRNA|[0-9]+S_rRNA"
+
 
   message("Running BLASTn (MT vs PT)...")
   blast_n <- metablastr::blast_nucleotide_to_nucleotide(
@@ -47,6 +51,7 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     return(NULL)
   }
 
+
   blast_n$alig_length <- as.numeric(blast_n$alig_length)
   blast_n$perc_identity <- as.numeric(blast_n$perc_identity)
   
@@ -55,12 +60,14 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   
   if (nrow(blast_n) == 0) return(NULL)
 
+
   blast_n$q_id_low <- tolower(blast_n$query_id)
   blast_n$s_id_low <- tolower(blast_n$subject_id)
   blast_n$q_start_fix <- pmin(as.numeric(blast_n$q_start), as.numeric(blast_n$q_end))
   blast_n$q_end_fix   <- pmax(as.numeric(blast_n$q_start), as.numeric(blast_n$q_end))
   blast_n$s_start_fix <- pmin(as.numeric(blast_n$s_start), as.numeric(blast_n$s_end))
   blast_n$s_end_fix   <- pmax(as.numeric(blast_n$s_start), as.numeric(blast_n$s_end))
+
 
   annotate_and_get_metrics <- function(df, bed, prefix) {
     chrom_col   <- if(prefix == "q") "q_id_low" else "s_id_low"
@@ -74,11 +81,14 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
                         bed$end > hit[[b_start_col]], ]
       
       if (nrow(overlaps) == 0) {
-        return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, only_trna = FALSE))
+        return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, only_trna = FALSE, only_rrna = FALSE))
       }
       
       is_trna <- grepl(trna_regex, overlaps$name, ignore.case = TRUE)
-      only_trna <- all(is_trna)
+      is_rrna <- grepl(rrna_regex, overlaps$name, ignore.case = TRUE)
+      is_rna  <- is_trna | is_rrna
+      only_trna <- all(is_trna) && any(is_trna)
+      only_rrna <- all(is_rrna) && any(is_rrna)
       
       gene_results <- list()
       for(j in 1:nrow(overlaps)) {
@@ -105,9 +115,11 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
       return(list(text = paste(res_text, collapse = "; "), 
                   sum_g_perc = sum_g_perc, 
                   sum_t_perc = sum_t_perc, 
-                  only_trna = only_trna))
+                  only_trna = only_trna,
+                  only_rrna = only_rrna))
     })
   }
+
 
   message("Annotating results...")
   mt_ann <- annotate_and_get_metrics(blast_n, b_mt, "q")
@@ -115,13 +127,24 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   
   blast_n$mt_genes <- sapply(mt_ann, function(x) x$text)
   blast_n$pt_genes <- sapply(pt_ann, function(x) x$text)
-  blast_n$direction <- "unknown"
+  blast_n$direction <- "Undefined"
+
 
   for (i in 1:nrow(blast_n)) {
     m <- mt_ann[[i]]; p <- pt_ann[[i]]
     
     if (m$only_trna && p$only_trna) {
-      blast_n$direction[i] <- "unknown"
+      blast_n$direction[i] <- "Undefined"
+      next
+    }
+    
+    if (m$only_rrna && p$only_rrna) {
+      blast_n$direction[i] <- "Undefined"
+      next
+    }
+    
+    if ((m$only_trna && p$only_rrna) || (m$only_rrna && p$only_trna)) {
+      blast_n$direction[i] <- "Undefined"
       next
     }
     
@@ -135,6 +158,7 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
       }
     }
   }
+
 
   cols_to_remove <- c("q_start_fix", "q_end_fix", "s_start_fix", "s_end_fix", "q_id_low", "s_id_low")
   blast_n <- blast_n[, !(names(blast_n) %in% cols_to_remove)]
