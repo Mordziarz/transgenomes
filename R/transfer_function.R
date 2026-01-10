@@ -101,26 +101,28 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
         g_percs_for_max[j] <- g_perc
       }
       
-      clipped_segments <- data.frame(
+      clipped <- data.frame(
         start = pmax(target_ov$start, hit[[b_start_col]]),
         end = pmin(target_ov$end, hit[[b_end_col]])
       )
+      clipped <- clipped[order(clipped$start), ]
       
+      merged_starts <- clipped$start[1]
+      merged_ends   <- clipped$end[1]
       
-      
-      segments_sorted <- clipped_segments[order(clipped_segments$start), ]
-      merged <- segments_sorted[1, , drop=FALSE]
-      if (nrow(segments_sorted) > 1) {
-        for (j in 2:nrow(segments_sorted)) {
-          if (segments_sorted$start[j] <= merged$end[nrow(merged)]) {
-            merged$end[nrow(merged)] <- max(merged$end[nrow(merged)], segments_sorted$end[j])
+      if (nrow(clipped) > 1) {
+        for (j in 2:nrow(clipped)) {
+          curr_idx <- length(merged_starts)
+          if (clipped$start[j] <= merged_ends[curr_idx]) {
+            merged_ends[curr_idx] <- max(merged_ends[curr_idx], clipped$end[j])
           } else {
-            merged <- rbind(merged, segments_sorted[j,])
+            merged_starts <- c(merged_starts, clipped$start[j])
+            merged_ends   <- c(merged_ends, clipped$end[j])
           }
         }
       }
       
-      total_unique_ov <- sum(merged$end - merged$start)
+      total_unique_ov <- sum(merged_ends - merged_starts)
       t_perc_merged <- (total_unique_ov / hit$alig_length) * 100
       
       res_text <- sapply(gene_results, function(x) {
