@@ -86,9 +86,10 @@ Each gene in `mt_genes` and `pt_genes` is described using the following syntax:
 
 The function determines the `direction` of DNA transfer based on the following improved logic:
 
-1.  **Protein-Coding Priority**: If an alignment overlaps with a protein-coding gene on one side and only non-coding elements (**tRNA** or **rRNA**) on the other, the protein-coding gene **always** determines the direction. Non-coding statistics are ignored in this case.
-2.  **Strict Non-Coding Rule**: If both sides of the alignment contain **only tRNA or rRNA** (or no genes at all), the direction is automatically marked as **`Unidentified`**. This prevents conserved non-coding sequences from generating false-positive transfer directions.
-3.  **Direction Assignment**:
+1. **Protein-Coding Priority**: If an alignment overlaps with at least one protein-coding gene, all non-coding elements (tRNA/rRNA) are strictly excluded from the statistical calculation. The direction is decided based solely on protein-coding sequences.
+2. **Multi-gene Handling**: If multiple protein-coding genes are present on the same side, their coordinates are merged into a single "coding footprint" to calculate unique coverage, ensuring percentages never exceed 100%.
+3.  **Strict Non-Coding Rule**: If both sides of the alignment contain **only tRNA or rRNA** (or no genes at all), the direction is automatically marked as **`Unidentified`**. This prevents conserved non-coding sequences from generating false-positive transfer directions.
+4.  **Direction Assignment**:
     * **MT -> PT**: Evidence shows the fragment is a protein-coding gene in MT but is potentially non-functional or only non-coding in PT.
     * **PT -> MT**: Evidence shows the fragment originates from a protein-coding gene in the PT genome.
     * **Unidentified**: Assigned if both sides only contain tRNA/rRNA, if no genes are present on either side, or if the difference in protein-coding gene coverage is below the `gene_buffer` / `trans_buffer` thresholds.
