@@ -28,14 +28,10 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
                                       min_identity = 70,
                                       gene_buffer = 20, 
                                       trans_buffer = 20,
-                                      nuclear_ratio_threshold = 1.1,
-                                      nuclear_min_bit_score = 100) {
+                                      nuc_copy_threshold = 2) {
   
-  if (!is.numeric(nuclear_ratio_threshold) || nuclear_ratio_threshold < 0 || nuclear_ratio_threshold > 5) {
-    stop("nuclear_ratio_threshold must be a numeric value between 0 and 5")
-  }
-  if (!is.numeric(nuclear_min_bit_score) || nuclear_min_bit_score <= 0) {
-    stop("nuclear_min_bit_score must be a positive numeric value")
+  if (!is.numeric(nuc_copy_threshold) || nuc_copy_threshold < 1 || nuc_copy_threshold > 10) {
+    stop("nuc_copy_threshold must be a numeric value between 1 and 10 (number of copies in NUC)")
   }
   
   load_bed <- function(bed_input) {
@@ -52,7 +48,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   run_single_transfer <- function(q_fasta, s_fasta, q_bed, s_bed, q_label, s_label, 
                                   validation_blast = NULL, validation_label = "3rd genome",
                                   q_label_short = NULL, s_label_short = NULL,
-                                  nuc_validation_blast = NULL) {
+                                  all_blast_results = NULL) {
     
     if (is.null(q_label_short)) q_label_short <- q_label
     if (is.null(s_label_short)) s_label_short <- s_label
@@ -113,74 +109,35 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
     blast_n[[paste0(tolower(s_label_short), "_genes")]] <- sapply(s_ann, function(x) x$text)
     blast_n$direction <- "Undefined"
     blast_n$excluded_coords <- NA_character_
-    blast_n$nuclear_paralog_flag <- NA_character_
+    blast_n$nuc_copy_number <- NA_integer_
+    blast_n$shared_organellar <- NA_character_
     
     for (i in 1:nrow(blast_n)) {
       m <- q_ann[[i]]; p <- s_ann[[i]]
       
-      if (!is.null(nuc_validation_blast)) {
+      # ====== FLAGOWANIE: Wielokrotne kopie w jądrze (NUMT/PLT symptomy) ======
+      if (s_label == "NUC" && !is.null(all_blast_results)) {
         tryCatch({
-          nuc_hits <- NULL
+          # Liczymy, ile różnych porównań (MT→NUC, PT→NUC) trafia w ten sam region NUC
+          nuc_region_hits <- all_blast_results[
+            all_blast_results$subject_id == blast_n$subject_id[i] &
+              pmin(all_blast_results$s_start, all_blast_results$s_end) < blast_n$s_end_fix[i] &
+              pmax(all_blast_results$s_start, all_blast_results$s_end) > blast_n$s_start_fix[i], ]
           
-          if (q_label == "MT" && s_label == "NUC") {
-            nuc_hits <- nuc_validation_blast[
-              nuc_validation_blast$subject_id == blast_n$subject_id[i] &
-                pmin(nuc_validation_blast$s_start, nuc_validation_blast$s_end) < blast_n$s_end_fix[i] &
-                pmax(nuc_validation_blast$s_start, nuc_validation_blast$s_end) > blast_n$s_start_fix[i], ]
-          } else if (q_label == "PT" && s_label == "NUC") {
-            nuc_hits <- nuc_validation_blast[
-              nuc_validation_blast$subject_id == blast_n$subject_id[i] &
-                pmin(nuc_validation_blast$s_start, nuc_validation_blast$s_end) < blast_n$s_end_fix[i] &
-                pmax(nuc_validation_blast$s_start, nuc_validation_blast$s_end) > blast_n$s_start_fix[i], ]
-          } else if (q_label == "MT" && s_label == "PT") {
-            nuc_query_hits <- nuc_validation_blast[
-              nuc_validation_blast$subject_id == blast_n$query_id[i] &
-                pmin(nuc_validation_blast$s_start, nuc_validation_blast$s_end) < blast_n$q_end_fix[i] &
-                pmax(nuc_validation_blast$s_start, nuc_validation_blast$s_end) > blast_n$q_start_fix[i], ]
-            nuc_subject_hits <- nuc_validation_blast[
-              nuc_validation_blast$subject_id == blast_n$subject_id[i] &
-                pmin(nuc_validation_blast$s_start, nuc_validation_blast$s_end) < blast_n$s_end_fix[i] &
-                pmax(nuc_validation_blast$s_start, nuc_validation_blast$s_end) > blast_n$s_start_fix[i], ]
-            if (nrow(nuc_query_hits) > 0 && nrow(nuc_subject_hits) > 0) {
-              blast_n$nuclear_paralog_flag[i] <- "BOTH_ENDPOINTS_NUCLEAR"
-              blast_n$direction[i] <- "Undefined (Both endpoints in nuclear)"
-              next
-            }
-            nuc_hits <- if (nrow(nuc_query_hits) > 0) nuc_query_hits else nuc_subject_hits
-          }
-          
-          if (!is.null(nuc_hits) && nrow(nuc_hits) > 0) {
-            best_nuc_idx <- which.max(as.numeric(nuc_hits$bit_score))
-            best_nuc <- nuc_hits[best_nuc_idx, ]
-            current_bit_score <- as.numeric(blast_n$bit_score[i])
-            current_alig_length <- as.numeric(blast_n$alig_length[i])
-            nuc_bit_score <- as.numeric(best_nuc$bit_score)
-            nuc_alig_length <- as.numeric(best_nuc$alig_length)
+          if (nrow(nuc_region_hits) > 0) {
+            copy_count <- length(unique(paste0(nuc_region_hits$query_id, "_", nuc_region_hits$direction)))
+            blast_n$nuc_copy_number[i] <- copy_count
             
-            if (!is.na(nuc_bit_score) && !is.na(current_bit_score) && 
-                !is.na(nuc_alig_length) && !is.na(current_alig_length) &&
-                current_alig_length > 0 && nuc_alig_length > 0) {
-              nuc_density <- nuc_bit_score / nuc_alig_length
-              cur_density <- current_bit_score / current_alig_length
-              density_ratio <- nuc_density / cur_density
-              
-              if (nuc_density >= (nuclear_min_bit_score / 1000) && 
-                  density_ratio >= nuclear_ratio_threshold) {
-                side <- if (q_label == "MT" && s_label == "NUC") "QUERY" else "SUBJECT"
-                blast_n$nuclear_paralog_flag[i] <- paste0(
-                  side, "_NUCLEAR_RISK [NUC_dens=", round(nuc_density, 2),
-                  " vs ", tolower(ifelse(side=="QUERY", s_label, q_label)), "_dens=", round(cur_density, 2),
-                  " ratio=", round(density_ratio, 2), "]")
-                blast_n$direction[i] <- paste0("Undefined (", side, " nuclear paralog)")
-                next
-              }
+            if (copy_count >= nuc_copy_threshold) {
+              blast_n$shared_organellar[i] <- paste0("Multiple_copies_in_NUC_", copy_count)
             }
           }
         }, error = function(e) {
-          warning(sprintf("Nuclear validation error at row %d: %s", i, e$message))
+          warning(sprintf("Copy counting error at row %d: %s", i, e$message))
         })
       }
       
+      # ====== CROSS-VALIDATION (STRONGER MATCH IN 3RD GENOME) ======
       if (!is.null(validation_blast)) {
         tryCatch({
           v_q_start <- pmin(as.numeric(validation_blast$q_start), as.numeric(validation_blast$q_end))
@@ -204,6 +161,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         })
       }
       
+      # ====== KIERUNEK TRANSFERU (LOGIKA OPARTA NA GENACH) ======
       m_has_genes <- m$has_genes; p_has_genes <- p$has_genes
       m_only_rna <- m$only_rna; p_only_rna <- p$only_rna
       m_only_trna <- m$only_trna; p_only_trna <- p$only_trna
@@ -250,19 +208,26 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   r_mt_nuc <- run_single_transfer(fasta_mt, fasta_nuc, b_mt, b_nuc, "MT", "NUC", q_label_short="mt", s_label_short="nuc")
   r_pt_nuc <- run_single_transfer(fasta_pt, fasta_nuc, b_pt, b_nuc, "PT", "NUC", q_label_short="pt", s_label_short="nuc")
   
-  message("\n=== STAGE 2: Validated transfers with DUAL nuclear paralog filtering ===")
+  message("\n=== STAGE 2: Validated transfers with cross-genome comparison ===")
+  
+  # Łączymy wszystkie wyniki z NUC dla liczenia kopii
+  all_nuc_results <- rbind(
+    if(!is.null(r_mt_nuc)) r_mt_nuc else NULL,
+    if(!is.null(r_pt_nuc)) r_pt_nuc else NULL
+  )
+  
   res_mt_pt  <- run_single_transfer(fasta_mt, fasta_pt, b_mt, b_pt, "MT", "PT", 
-                                    r_mt_nuc, "NUC", "mt", "pt", r_mt_nuc)
+                                    r_mt_nuc, "NUC", "mt", "pt", all_nuc_results)
   res_mt_nuc <- run_single_transfer(fasta_mt, fasta_nuc, b_mt, b_nuc, "MT", "NUC", 
-                                    r_mt_pt, "PT", "mt", "nuc", r_pt_nuc)
+                                    r_mt_pt, "PT", "mt", "nuc", all_nuc_results)
   res_pt_nuc <- run_single_transfer(fasta_pt, fasta_nuc, b_pt, b_nuc, "PT", "NUC", 
-                                    r_mt_pt, "MT", "pt", "nuc", r_mt_nuc)
+                                    r_mt_pt, "MT", "pt", "nuc", all_nuc_results)
   
   combined <- list(res_mt_pt, res_mt_nuc, res_pt_nuc)
   final_df <- data.frame()
   for (res in combined) {
     if (!is.null(res)) {
-      for(col in c("mt_genes", "pt_genes", "nuc_genes", "excluded_coords", "nuclear_paralog_flag")) {
+      for(col in c("mt_genes", "pt_genes", "nuc_genes", "excluded_coords", "nuc_copy_number", "shared_organellar")) {
         if(!(col %in% names(res))) res[[col]] <- NA
       }
       final_df <- rbind(final_df, res)
@@ -271,14 +236,16 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   
   order_cols <- c("query_id", "subject_id", "perc_identity", "alig_length",
                   "q_start", "q_end", "s_start", "s_end", "evalue", "bit_score",
-                  "mt_genes", "pt_genes", "nuc_genes", "direction", "excluded_coords", "nuclear_paralog_flag")
+                  "mt_genes", "pt_genes", "nuc_genes", "direction", "excluded_coords", 
+                  "nuc_copy_number", "shared_organellar")
   
   for(c in order_cols) if(!(c %in% names(final_df))) final_df[[c]] <- NA
   
   message("\n=== RESULTS SUMMARY ===")
   message(sprintf("Total hits processed: %d", nrow(final_df)))
-  message(sprintf("High confidence transfers: %d", sum(is.na(final_df$nuclear_paralog_flag) & is.na(final_df$excluded_coords))))
-  message(sprintf("Nuclear paralog risks detected: %d", sum(!is.na(final_df$nuclear_paralog_flag))))
+  message(sprintf("High confidence transfers (no exclusions/flags): %d", 
+                  sum(is.na(final_df$excluded_coords) & is.na(final_df$shared_organellar))))
+  message(sprintf("Hits with multiple copies in NUC: %d", sum(!is.na(final_df$shared_organellar))))
   message(sprintf("Hits excluded by cross-validation: %d", sum(!is.na(final_df$excluded_coords))))
   
   return(final_df[, order_cols])
