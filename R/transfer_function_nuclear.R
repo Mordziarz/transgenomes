@@ -157,24 +157,30 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
       
       nuc_flag <- NA_character_
       
-      if (!is.null(nuc_validation_blast)) {
-        nuc_cross <- nuc_validation_blast[
-          nuc_validation_blast$query_id == blast_n$query_id[i] & 
-            abs(as.numeric(nuc_validation_blast$q_start) - blast_n$q_start[i]) < 50, ]
+if (!is.null(nuc_validation_blast)) {
+        relevant_nuc <- nuc_validation_blast[nuc_validation_blast$query_id == blast_n$query_id[i], ]
         
-        if (nrow(nuc_cross) > 0) {
-          best_nuc <- nuc_cross[which.max(as.numeric(nuc_cross$bit_score)), ]
-          current_bit_score <- blast_n$bit_score[i]
-          nuc_bit_score <- as.numeric(best_nuc$bit_score)
-          ratio <- nuc_bit_score / current_bit_score
+        if (nrow(relevant_nuc) > 0) {
+          nuc_q_start <- pmin(as.numeric(relevant_nuc$q_start), as.numeric(relevant_nuc$q_end))
+          nuc_q_end   <- pmax(as.numeric(relevant_nuc$q_start), as.numeric(relevant_nuc$q_end))
           
-          if (ratio >= nuclear_bit_score_threshold) {
-            nuc_flag <- paste0(
-              "NUCLEAR_PARALOG_RISK [NUC_score=", round(nuc_bit_score, 1),
-              " vs ", tolower(s_label), "_score=", round(current_bit_score, 1),
-              " ratio=", round(ratio, 2), "]"
-            )
-            blast_n$nuclear_paralog_flag[i] <- nuc_flag
+          nuc_cross <- relevant_nuc[nuc_q_start < blast_n$q_end_fix[i] & nuc_q_end > blast_n$q_start_fix[i], ]
+          
+          if (nrow(nuc_cross) > 0) {
+            best_nuc <- nuc_cross[which.max(as.numeric(nuc_cross$bit_score)), ]
+            
+            current_bit_score <- blast_n$bit_score[i]
+            nuc_bit_score     <- as.numeric(best_nuc$bit_score)
+            ratio             <- nuc_bit_score / current_bit_score
+          
+            if (ratio >= nuclear_bit_score_threshold) {
+              nuc_flag <- paste0(
+                "NUCLEAR_PARALOG_RISK [NUC_score=", round(nuc_bit_score, 1),
+                " vs ", tolower(s_label), "_score=", round(current_bit_score, 1),
+                " ratio=", round(ratio, 2), "]"
+              )
+              blast_n$nuclear_paralog_flag[i] <- nuc_flag
+            }
           }
         }
       }
