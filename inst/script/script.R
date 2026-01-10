@@ -51,7 +51,13 @@ test_q <- transgenomes::extract_regions(transfer_function_out = transfer_1,
 
 
 
-results_GC <- transgenomes::analyze_GC_content(extract_regions_1 = test_s, extract_regions_2 = test_q,group1_name = "Plastome",group2_name = "Mitogenome",alpha = 0.05)
+transgenomes::analyze_GC_content(extract_regions_1 = test_s, 
+                                               extract_regions_2 = test_q,
+                                               group1_name = "Plastome",
+                                               group2_name = "Mitogenome",
+                                               alpha = 0.05,
+                                               group1_col = "darkgreen", 
+                                               group2_col = "orange")
 
 results_GC$plot
 results_GC$test_result
