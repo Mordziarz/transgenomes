@@ -57,71 +57,50 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
     
     if (is.null(blast_n) || nrow(blast_n) == 0) return(NULL)
     
-    blast_n$alig_length <- as.numeric(blast_n$alig_length)
-    blast_n$perc_identity <- as.numeric(blast_n$perc_identity)
-    blast_n$bit_score <- as.numeric(blast_n$bit_score)
-    blast_n$q_start <- as.numeric(blast_n$q_start)
-    blast_n$q_end <- as.numeric(blast_n$q_end)
-    blast_n$s_start <- as.numeric(blast_n$s_start)
-    blast_n$s_end <- as.numeric(blast_n$s_end)
+    cols_to_num <- c("alig_length", "perc_identity", "bit_score", "q_start", "q_end", "s_start", "s_end")
+    blast_n[cols_to_num] <- lapply(blast_n[cols_to_num], as.numeric)
     
     blast_n <- blast_n[blast_n$alig_length >= min_length & blast_n$perc_identity >= min_identity, ]
     if (nrow(blast_n) == 0) return(NULL)
     
-    blast_n$query_id_lower <- tolower(blast_n$query_id)
-    blast_n$subject_id_lower <- tolower(blast_n$subject_id)
     blast_n$q_start_fix <- pmin(blast_n$q_start, blast_n$q_end)
     blast_n$q_end_fix   <- pmax(blast_n$q_start, blast_n$q_end)
     blast_n$s_start_fix <- pmin(blast_n$s_start, blast_n$s_end)
     blast_n$s_end_fix   <- pmax(blast_n$s_start, blast_n$s_end)
     
-    annotate_and_get_metrics <- function(df, bed, prefix) {
-      chrom_col   <- if(prefix == "q") "query_id_lower" else "subject_id_lower"
-      b_start_col <- if(prefix == "q") "q_start_fix" else "s_start_fix"
-      b_end_col   <- if(prefix == "q") "q_end_fix" else "s_end_fix"
+    annotate_metrics <- function(df, bed, prefix) {
+      id_col <- if(prefix == "q") "query_id" else "subject_id"
+      s_col  <- if(prefix == "q") "q_start_fix" else "s_start_fix"
+      e_col  <- if(prefix == "q") "q_end_fix" else "s_end_fix"
       
       lapply(1:nrow(df), function(i) {
         hit <- df[i, ]
-        overlaps <- bed[bed$chrom == hit[[chrom_col]] & bed$start < hit[[b_end_col]] & bed$end > hit[[b_start_col]], ]
+        ov  <- bed[bed$chrom == tolower(hit[[id_col]]) & bed$start < hit[[e_col]] & bed$end > hit[[s_col]], ]
         
-        if (nrow(overlaps) == 0) {
-          return(list(text = NA, sum_g_perc = 0, sum_t_perc = 0,
-                      only_trna = FALSE, only_rrna = FALSE, only_rna = FALSE, 
-                      has_genes = FALSE, has_coding = FALSE))
-        }
+        if (nrow(ov) == 0) return(list(text = NA, sum_g = 0, sum_t = 0, has_genes = FALSE, only_rna = FALSE))
         
-        is_trna <- grepl(trna_regex, overlaps$name, ignore.case = TRUE)
-        is_rrna <- grepl(rrna_regex, overlaps$name, ignore.case = TRUE)
-        is_any_rna <- is_trna | is_rrna
-        coding_genes <- overlaps[!is_any_rna, ]
-        rna_genes <- overlaps[is_any_rna, ]
+        is_rna <- grepl(paste0(trna_regex, "|", rrna_regex), ov$name, ignore.case = TRUE)
+        coding_genes <- ov[!is_rna, ]
+        target_ov <- if (nrow(coding_genes) > 0) coding_genes else ov
         
-        target_ov <- if (nrow(coding_genes) > 0) coding_genes else rna_genes
-        
-        gene_results <- list()
-        for(j in 1:nrow(target_ov)) {
+        gene_stats <- sapply(1:nrow(target_ov), function(j) {
           g_len  <- target_ov$end[j] - target_ov$start[j]
-          ov_len <- max(0, min(target_ov$end[j], hit[[b_end_col]]) - max(target_ov$start[j], hit[[b_start_col]]))
-          g_perc <- (ov_len / g_len) * 100
-          t_perc <- (ov_len / hit$alig_length) * 100
-          gene_results[[j]] <- list(g_perc = g_perc, t_perc = t_perc, g_len = g_len, ov_len = ov_len, name = target_ov$name[j])
-        }
-        
-        sum_g_perc <- sum(sapply(gene_results, function(x) x$g_perc))
-        sum_t_perc <- sum(sapply(gene_results, function(x) x$t_perc))
-        res_text <- sapply(gene_results, function(x) {
-          paste0(x$name, " (g_len=", x$g_len, ", ov_len=", round(x$ov_len, 0), 
-                 ", g_perc=", round(x$g_perc, 1), "%, t_perc=", round(x$t_perc, 1), "%)")
+          ov_len <- max(0, min(target_ov$end[j], hit[[e_col]]) - max(target_ov$start[j], hit[[s_col]]))
+          c(g_perc = (ov_len / g_len) * 100, t_perc = (ov_len / hit$alig_length) * 100, ov_len = ov_len, g_len = g_len)
         })
         
-        return(list(text = paste(res_text, collapse = "; "), sum_g_perc = sum_g_perc, sum_t_perc = sum_t_perc, 
-                    only_trna = all(is_trna), only_rrna = all(is_rrna), only_rna = all(is_any_rna), 
-                    has_genes = TRUE, has_coding = nrow(coding_genes) > 0))
+        res_text <- paste(sapply(1:nrow(target_ov), function(j) {
+          paste0(target_ov$name[j], " (g_len=", gene_stats["g_len",j], ", ov_len=", round(gene_stats["ov_len",j], 0), 
+                 ", g_perc=", round(gene_stats["g_perc",j], 1), "%, t_perc=", round(gene_stats["t_perc",j], 1), "%)")
+        }), collapse = "; ")
+        
+        return(list(text = res_text, sum_g = sum(gene_stats["g_perc",]), sum_t = sum(gene_stats["t_perc",]), 
+                    has_genes = TRUE, only_rna = all(is_rna)))
       })
     }
     
-    q_ann <- annotate_and_get_metrics(blast_n, q_bed, "q")
-    s_ann <- annotate_and_get_metrics(blast_n, s_bed, "s")
+    q_ann <- annotate_metrics(blast_n, q_bed, "q")
+    s_ann <- annotate_metrics(blast_n, s_bed, "s")
     
     blast_n[[paste0(tolower(q_label_short), "_genes")]] <- sapply(q_ann, function(x) x$text)
     blast_n[[paste0(tolower(s_label_short), "_genes")]] <- sapply(s_ann, function(x) x$text)
@@ -134,53 +113,48 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
       
       if (!is.null(validation_blast)) {
         cross <- validation_blast[validation_blast$query_id == blast_n$query_id[i] & 
-                                  abs(validation_blast$q_start - blast_n$q_start[i]) < 50, ]
-        if (nrow(cross) > 0 && max(cross$bit_score) > blast_n$bit_score[i]) {
-          best_cross <- cross[which.max(cross$bit_score), ]
+                                  abs(as.numeric(validation_blast$q_start) - blast_n$q_start[i]) < 50, ]
+        if (nrow(cross) > 0 && max(as.numeric(cross$bit_score)) > blast_n$bit_score[i]) {
+          best <- cross[which.max(as.numeric(cross$bit_score)), ]
           blast_n$direction[i] <- paste0("Excluded: Stronger match in ", validation_label)
-          blast_n$excluded_coords[i] <- paste0(validation_label, " [", as.numeric(best_cross$s_start), "-", 
-                                               as.numeric(best_cross$s_end), "] score=", round(best_cross$bit_score, 1))
+          blast_n$excluded_coords[i] <- paste0(validation_label, " [", best$s_start, "-", best$s_end, "] score=", best$bit_score)
           next
         }
       }
-      
-      if (!m$has_genes && p$has_genes) {
-        blast_n$direction[i] <- paste(s_label, "->", q_label) # S ma geny, Q nie -> S jest donorem
+
+      if ((m$only_rna && !p$has_genes) || (!m$has_genes && p$only_rna)) {
+        blast_n$direction[i] <- "Undefined (RNA vs NA)"
         next
-      } else if (m$has_genes && !p$has_genes) {
-        blast_n$direction[i] <- paste(q_label, "->", s_label) # Q ma geny, S nie -> Q jest donorem
+      }
+      
+      if (m$has_genes && !p$has_genes) {
+        blast_n$direction[i] <- paste(q_label, "->", s_label)
+        next
+      } else if (!m$has_genes && p$has_genes) {
+        blast_n$direction[i] <- paste(s_label, "->", q_label)
         next
       } else if (!m$has_genes && !p$has_genes) {
         blast_n$direction[i] <- "Undefined (No genes)"
         next
       }
-      
-      if (m$only_rna && !p$only_rna) {
-        blast_n$direction[i] <- paste(s_label, "->", q_label)
-        next
-      } else if (!m$only_rna && p$only_rna) {
+
+      if (!m$only_rna && p$only_rna) {
         blast_n$direction[i] <- paste(q_label, "->", s_label)
         next
-      }
-      
-      if (m$only_rna && p$only_rna) {
-        blast_n$direction[i] <- "Undefined (RNA vs RNA)"
+      } else if (m$only_rna && !p$only_rna) {
+        blast_n$direction[i] <- paste(s_label, "->", q_label)
         next
       }
-      
-      g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
-      if (g_diff >= gene_buffer) {
-        blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
-      } else {
-        t_diff <- abs(m$sum_t_perc - p$sum_t_perc)
-        if (t_diff >= trans_buffer) {
-          blast_n$direction[i] <- if(m$sum_t_perc > p$sum_t_perc) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
-        }
+
+      if (abs(m$sum_g - p$sum_g) >= gene_buffer) {
+        blast_n$direction[i] <- if(m$sum_g > p$sum_g) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
+      } else if (abs(m$sum_t - p$sum_t) >= trans_buffer) {
+        blast_n$direction[i] <- if(m$sum_t > p$sum_t) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
       }
     }
     
-    cols_to_remove <- c("q_start_fix", "q_end_fix", "s_start_fix", "s_end_fix", "query_id_lower", "subject_id_lower")
-    return(blast_n[, !(names(blast_n) %in% cols_to_remove)])
+    cols_to_del <- c("q_start_fix", "q_end_fix", "s_start_fix", "s_end_fix")
+    return(blast_n[, !(names(blast_n) %in% cols_to_del)])
   }
   
   r_mt_pt  <- run_single_transfer(fasta_mt, fasta_pt, b_mt, b_pt, "MT", "PT", q_label_short="mt", s_label_short="pt")
@@ -191,20 +165,21 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   res_mt_nuc <- run_single_transfer(fasta_mt, fasta_nuc, b_mt, b_nuc, "MT", "NUC", r_mt_pt, "PT", "mt", "nuc")
   res_pt_nuc <- run_single_transfer(fasta_pt, fasta_nuc, b_pt, b_nuc, "PT", "NUC", r_mt_pt, "MT", "pt", "nuc")
   
-  final_res <- data.frame()
-  combined  <- list(res_mt_pt, res_mt_nuc, res_pt_nuc)
+  combined <- list(res_mt_pt, res_mt_nuc, res_pt_nuc)
+  final_df <- data.frame()
   for (res in combined) {
     if (!is.null(res)) {
-      for(col in c("mt_genes", "pt_genes", "nuc_genes")) if(!(col %in% names(res))) res[[col]] <- NA
-      if(!("excluded_coords" %in% names(res))) res$excluded_coords <- NA
-      final_res <- rbind(final_res, res)
+      for(col in c("mt_genes", "pt_genes", "nuc_genes", "excluded_coords")) {
+        if(!(col %in% names(res))) res[[col]] <- NA
+      }
+      final_df <- rbind(final_df, res)
     }
   }
   
-  desired_order <- c("query_id", "subject_id", "perc_identity", "num_ident_matches", "alig_length", "mismatches", 
-                     "q_start", "q_end", "s_start", "s_end", "evalue", "bit_score", 
-                     "mt_genes", "pt_genes", "nuc_genes", "direction", "excluded_coords")
+  order_cols <- c("query_id", "subject_id", "perc_identity", "alig_length", "q_start", "q_end", "s_start", "s_end", 
+                  "evalue", "bit_score", "mt_genes", "pt_genes", "nuc_genes", "direction", "excluded_coords")
   
-  for(col in desired_order) if(!(col %in% names(final_res))) final_res[[col]] <- NA
-  return(final_res[, desired_order])
+  for(c in order_cols) if(!(c %in% names(final_df))) final_df[[c]] <- NA
+  
+  return(final_df[, order_cols])
 }
