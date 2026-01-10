@@ -21,7 +21,7 @@
 #' @return A data.frame containing BLASTn results merged with specific HGT metrics and predicted transfer directions.
 #' @export
 
-transfer_function_nuclear_final <- function(fasta_mt, fasta_pt, fasta_nuc, 
+transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc, 
                                             bed_mt, bed_pt, bed_nuc,
                                             evalue_cut_off = 1e-06, 
                                             min_length = 100,
