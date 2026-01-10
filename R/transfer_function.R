@@ -44,7 +44,7 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     db.import = FALSE, task = "blastn", evalue = evalue_cut_off
   )
   
-  if (nrow(blast_n) == 0) {
+  if (is.null(blast_n) || nrow(blast_n) == 0) {
     message("No BLAST hits found.")
     return(NULL)
   }
@@ -76,16 +76,19 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
                         bed$end > hit[[b_start_col]], ]
       
       if (nrow(overlaps) == 0) {
-        return(list(text = "none", mean_g_perc = 0, mean_t_perc = 0, only_trna = FALSE, only_rrna = FALSE, has_genes = FALSE, only_rna = FALSE))
+        return(list(text = "none", mean_g_perc = 0, mean_t_perc = 0, g_perc_max = 0,
+                    has_genes = FALSE, has_coding = FALSE, has_rna = FALSE))
       }
       
-      is_trna <- grepl(trna_regex, overlaps$name, ignore.case = TRUE)
-      is_rrna <- grepl(rrna_regex, overlaps$name, ignore.case = TRUE)
-      is_rna  <- is_trna | is_rrna
+      is_rna <- grepl(trna_regex, overlaps$name, ignore.case = TRUE) | 
+                grepl(rrna_regex, overlaps$name, ignore.case = TRUE)
       coding_genes <- overlaps[!is_rna, ]
+
       target_ov <- if (nrow(coding_genes) > 0) coding_genes else overlaps
       
       gene_results <- list()
+      g_percs_for_max <- numeric()
+
       for(j in 1:nrow(target_ov)) {
         g_len  <- target_ov$end[j] - target_ov$start[j]
         ov_len <- max(0, min(target_ov$end[j], hit[[b_end_col]]) - max(target_ov$start[j], hit[[b_start_col]]))
@@ -95,29 +98,44 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
         
         gene_results[[j]] <- list(g_perc = g_perc, t_perc = t_perc, g_len = g_len, 
                                   ov_len = ov_len, name = target_ov$name[j])
+        g_percs_for_max[j] <- g_perc
       }
       
-      mean_g_perc <- mean(sapply(gene_results, function(x) x$g_perc))
-      mean_t_perc <- mean(sapply(gene_results, function(x) x$t_perc))
+      clipped_segments <- data.frame(
+        start = pmax(target_ov$start, hit[[b_start_col]]),
+        end = pmin(target_ov$end, hit[[b_end_col]])
+      )
+      
+      
+      
+      segments_sorted <- clipped_segments[order(clipped_segments$start), ]
+      merged <- segments_sorted[1, , drop=FALSE]
+      if (nrow(segments_sorted) > 1) {
+        for (j in 2:nrow(segments_sorted)) {
+          if (segments_sorted$start[j] <= merged$end[nrow(merged)]) {
+            merged$end[nrow(merged)] <- max(merged$end[nrow(merged)], segments_sorted$end[j])
+          } else {
+            merged <- rbind(merged, segments_sorted[j,])
+          }
+        }
+      }
+      
+      total_unique_ov <- sum(merged$end - merged$start)
+      t_perc_merged <- (total_unique_ov / hit$alig_length) * 100
       
       res_text <- sapply(gene_results, function(x) {
-        paste0(x$name, " (g_len=", x$g_len, 
-               ", ov_len=", round(x$ov_len, 0), 
-               ", g_perc=", round(x$g_perc, 1), "%, ",
-               "t_perc=", round(x$t_perc, 1), "%)")
+        paste0(x$name, " (g_perc=", round(x$g_perc, 1), "%, t_perc=", round(x$t_perc, 1), "%)")
       })
       
-      only_trna <- all(is_trna[is_rna]) && any(is_trna)
-      only_rrna <- all(is_rrna[is_rna]) && any(is_rrna)
-      only_rna_all <- all(is_rna) && any(is_rna)
-      
-      return(list(text = paste(res_text, collapse = "; "), 
-                  mean_g_perc = mean_g_perc, 
-                  mean_t_perc = mean_t_perc, 
-                  only_trna = only_trna,
-                  only_rrna = only_rrna,
-                  has_genes = nrow(target_ov) > 0,
-                  only_rna = only_rna_all))
+      return(list(
+        text = paste(res_text, collapse = "; "), 
+        mean_g_perc = mean(g_percs_for_max),
+        mean_t_perc = t_perc_merged,        
+        g_perc_max = max(g_percs_for_max),
+        has_genes = TRUE,
+        has_coding = nrow(coding_genes) > 0,
+        has_rna = any(is_rna)
+      ))
     })
   }
 
@@ -132,62 +150,25 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   for (i in 1:nrow(blast_n)) {
     m <- mt_ann[[i]]; p <- pt_ann[[i]]
     
-    if (m$only_trna && p$only_trna) {
+    if (!m$has_coding && !p$has_coding) {
       blast_n$direction[i] <- "Undefined"
       next
     }
     
-    if (m$only_rrna && p$only_rrna) {
-      blast_n$direction[i] <- "Undefined"
-      next
+    if (m$has_coding && !p$has_coding) {
+      blast_n$direction[i] <- "MT -> PT"; next
+    }
+    if (!m$has_coding && p$has_coding) {
+      blast_n$direction[i] <- "PT -> MT"; next
     }
     
-    if ((m$only_trna && p$only_rrna) || (m$only_rrna && p$only_trna)) {
-      blast_n$direction[i] <- "Undefined"
-      next
-    }
-    
-    if (m$only_rna && !p$has_genes) {
-      blast_n$direction[i] <- "Undefined"
-      next
-    }
-    
-    if (!m$has_genes && p$only_rna) {
-      blast_n$direction[i] <- "Undefined"
-      next
-    }
-    
-    if (m$has_genes && !p$has_genes) {
-      blast_n$direction[i] <- "MT -> PT"
-      next
-    } else if (!m$has_genes && p$has_genes) {
-      blast_n$direction[i] <- "PT -> MT"
-      next
-    } else if (!m$has_genes && !p$has_genes) {
-      blast_n$direction[i] <- "Undefined"
-      next
-    }
-    
-    if (m$only_rna && p$only_rna) {
-      blast_n$direction[i] <- "Undefined"
-      next
-    }
-    
-    if (!m$only_rna && p$only_rna) {
-      blast_n$direction[i] <- "MT -> PT"
-      next
-    } else if (m$only_rna && !p$only_rna) {
-      blast_n$direction[i] <- "PT -> MT"
-      next
-    }
-    
-    g_diff <- abs(m$mean_g_perc - p$mean_g_perc)
-    if (g_diff >= gene_buffer) {
-      blast_n$direction[i] <- if(m$mean_g_perc > p$mean_g_perc) "MT -> PT" else "PT -> MT"
+    if (abs(m$g_perc_max - p$g_perc_max) >= gene_buffer) {
+      blast_n$direction[i] <- if(m$g_perc_max > p$g_perc_max) "MT -> PT" else "PT -> MT"
     } else {
-      t_diff <- abs(m$mean_t_perc - p$mean_t_perc)
-      if (t_diff >= trans_buffer) {
+      if (abs(m$mean_t_perc - p$mean_t_perc) >= trans_buffer) {
         blast_n$direction[i] <- if(m$mean_t_perc > p$mean_t_perc) "MT -> PT" else "PT -> MT"
+      } else {
+        blast_n$direction[i] <- "Undefined"
       }
     }
   }
