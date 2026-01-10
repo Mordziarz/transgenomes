@@ -19,9 +19,9 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
                               trans_buffer = 20) {
   
   if (missing(fasta_mt) || missing(fasta_pt) || missing(bed_mt) || missing(bed_pt)) {
-    stop("All input files are required.")
+    stop("All input files (FASTA and BED) are required.")
   }
-
+  
   load_bed_local <- function(bed_input) {
     df <- if (is.character(bed_input)) read.table(bed_input, header = FALSE, stringsAsFactors = FALSE) else as.data.frame(bed_input)
     data.frame(
@@ -36,12 +36,11 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   b_mt  <- load_bed_local(bed_mt)
   b_pt  <- load_bed_local(bed_pt)
   
-  # Definicje regexów dla genów niekodujących białek
   trna_regex <- "^trn|tRNA"
   rrna_regex <- "^rrn|rRNA|[0-9]+S_rRNA"
   non_coding_regex <- paste0(trna_regex, "|", rrna_regex)
 
-  message("Running BLASTn (MT vs PT)...")
+  message("Running BLASTn...")
   blast_n <- metablastr::blast_nucleotide_to_nucleotide(
     query = fasta_mt, subject = fasta_pt,
     db.import = FALSE, task = "blastn", evalue = evalue_cut_off
@@ -54,7 +53,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
 
   blast_n$alig_length <- as.numeric(blast_n$alig_length)
   blast_n$perc_identity <- as.numeric(blast_n$perc_identity)
-  
   blast_n <- blast_n[blast_n$alig_length >= min_length & 
                        blast_n$perc_identity >= min_identity, ]
   
@@ -82,45 +80,44 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
         return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, has_protein_coding = FALSE))
       }
       
-      # Sprawdzenie typu genów
       is_non_coding <- grepl(non_coding_regex, overlaps$name, ignore.case = TRUE)
       has_protein_coding <- any(!is_non_coding)
       
-      # ROZWIĄZANIE PROBLEMU NAKŁADANIA SIĘ GENÓW
-      # Tworzymy wektor zakresu hitu
       hit_range <- hit[[b_start_col]]:hit[[b_end_col]]
-      
-      # Obliczamy unikalne nakładające się nukleotydy dla t_perc (cały hit)
-      all_ov_bases <- c()
-      gene_results <- list()
+      all_gene_results <- list()
+      protein_ov_bases <- c()
       
       for(j in 1:nrow(overlaps)) {
         g_start <- overlaps$start[j]
         g_end <- overlaps$end[j]
-        g_len  <- g_end - g_start
         
-        # Zakres nukleotydów tego konkretnego genu
+        g_len  <- (g_end - g_start) + 1
         g_range <- g_start:g_end
-        # Część wspólna genu i hitu
         ov_bases <- intersect(hit_range, g_range)
         ov_len <- length(ov_bases)
         
-        all_ov_bases <- union(all_ov_bases, ov_bases)
-        
-        g_perc <- (ov_len / g_len) * 100
+        g_perc <- min(100, (ov_len / g_len) * 100)
         t_perc_single <- (ov_len / hit$alig_length) * 100
         
-        gene_results[[j]] <- list(g_perc = g_perc, t_perc = t_perc_single, g_len = g_len, 
-                                  ov_len = ov_len, name = overlaps$name[j])
+        all_gene_results[[j]] <- list(
+          name = overlaps$name[j], 
+          g_len = g_len, 
+          ov_len = ov_len, 
+          g_perc = g_perc, 
+          t_perc = t_perc_single,
+          is_nc = is_non_coding[j]
+        )
+        
+        if(!is_non_coding[j]) {
+          protein_ov_bases <- union(protein_ov_bases, ov_bases)
+        }
       }
+
+      protein_genes <- Filter(function(x) !x$is_nc, all_gene_results)
+      sum_g_perc <- sum(sapply(protein_genes, function(x) x$g_perc))
+      sum_t_perc <- (length(protein_ov_bases) / hit$alig_length) * 100
       
-      # sum_t_perc bazuje na UNIKALNYCH nukleotydach (nie dublujemy nakładek)
-      sum_t_perc <- (length(all_ov_bases) / hit$alig_length) * 100
-      
-      # sum_g_perc dla logiki decyzyjnej (uproszczona suma procentów pokrycia genów)
-      sum_g_perc <- sum(sapply(gene_results, function(x) x$g_perc))
-      
-      res_text <- sapply(gene_results, function(x) {
+      res_text <- sapply(all_gene_results, function(x) {
         paste0(x$name, " (g_len=", x$g_len, 
                ", ov_len=", round(x$ov_len, 0), 
                ", g_perc=", round(x$g_perc, 1), "%, ",
@@ -134,7 +131,7 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     })
   }
 
-  message("Annotating results...")
+  message("Annotating results and determining direction...")
   mt_ann <- annotate_and_get_metrics(blast_n, b_mt, "q")
   pt_ann <- annotate_and_get_metrics(blast_n, b_pt, "s")
   
@@ -145,13 +142,10 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   for (i in 1:nrow(blast_n)) {
     m <- mt_ann[[i]]; p <- pt_ann[[i]]
     
-    # 1. Jeśli obie strony mają TYLKO tRNA/rRNA (lub nic) -> Unidentified
     if (!m$has_protein_coding && !p$has_protein_coding) {
-      blast_n$direction[i] <- "Unidentified"
       next
     }
     
-    # 2. Jeśli tylko jedna strona ma gen kodujący białko -> kierunek od tej strony
     if (m$has_protein_coding && !p$has_protein_coding) {
       blast_n$direction[i] <- "MT -> PT"
       next
@@ -161,7 +155,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
       next
     }
     
-    # 3. Jeśli obie strony mają geny kodujące, używamy dotychczasowej logiki buforów
     g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
     if (g_diff >= gene_buffer) {
       blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) "MT -> PT" else "PT -> MT"
