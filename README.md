@@ -25,7 +25,7 @@ library(ggpubr)
 
 # Input data 
 
-The transfer_function() integrates mitochondrial and plastid sequence data by accepting two FASTA files (fasta_mt and fasta_pt) and their corresponding gene annotations in BED format (bed_mt and bed_pt). The function executes a BLASTn search using a specified evalue_cut_off, subsequently filtering results based on min_length and min_identity to ensure alignment quality. By cross-referencing these alignments with the BED files, it calculates gene coverage metrics to determine the direction of sequence transfer (MT -> PT or PT -> MT). This determination is based on whether the difference in gene coverage or transfer percentages exceeds the defined gene_buffer or trans_buffer, while specifically categorizing alignments consisting solely of tRNA genes as "unknown" to maintain biological accuracy.
+The transfer_function() integrates mitochondrial and plastid sequence data by accepting two FASTA files (fasta_mt and fasta_pt) and their corresponding gene annotations in BED format (bed_mt and bed_pt). The function executes a BLASTn search using a specified evalue_cut_off, subsequently filtering results based on min_length and min_identity to ensure alignment quality. By cross-referencing these alignments with the BED files, it calculates gene coverage metrics to determine the direction of sequence transfer (MT -> PT or PT -> MT).
 
 The bed should look like this: 
 V1 - Genome name,
