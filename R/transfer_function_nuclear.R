@@ -115,10 +115,8 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
     for (i in 1:nrow(blast_n)) {
       m <- q_ann[[i]]; p <- s_ann[[i]]
       
-      # ====== FLAGOWANIE: Wielokrotne kopie w jądrze (NUMT/PLT symptomy) ======
       if (s_label == "NUC" && !is.null(all_blast_results)) {
         tryCatch({
-          # Liczymy, ile różnych porównań (MT→NUC, PT→NUC) trafia w ten sam region NUC
           nuc_region_hits <- all_blast_results[
             all_blast_results$subject_id == blast_n$subject_id[i] &
               pmin(all_blast_results$s_start, all_blast_results$s_end) < blast_n$s_end_fix[i] &
@@ -137,7 +135,6 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         })
       }
       
-      # ====== CROSS-VALIDATION (STRONGER MATCH IN 3RD GENOME) ======
       if (!is.null(validation_blast)) {
         tryCatch({
           v_q_start <- pmin(as.numeric(validation_blast$q_start), as.numeric(validation_blast$q_end))
@@ -161,7 +158,6 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         })
       }
       
-      # ====== KIERUNEK TRANSFERU (LOGIKA OPARTA NA GENACH) ======
       m_has_genes <- m$has_genes; p_has_genes <- p$has_genes
       m_only_rna <- m$only_rna; p_only_rna <- p$only_rna
       m_only_trna <- m$only_trna; p_only_trna <- p$only_trna
@@ -210,7 +206,6 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   
   message("\n=== STAGE 2: Validated transfers with cross-genome comparison ===")
   
-  # Łączymy wszystkie wyniki z NUC dla liczenia kopii
   all_nuc_results <- rbind(
     if(!is.null(r_mt_nuc)) r_mt_nuc else NULL,
     if(!is.null(r_pt_nuc)) r_pt_nuc else NULL
