@@ -28,11 +28,11 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
                                       min_identity = 70,
                                       gene_buffer = 20, 
                                       trans_buffer = 20,
-                                      nuclear_ratio_threshold = 0.85,
+                                      nuclear_ratio_threshold = 1.1,
                                       nuclear_min_bit_score = 100) {
   
-  if (!is.numeric(nuclear_ratio_threshold) || nuclear_ratio_threshold < 0 || nuclear_ratio_threshold > 1) {
-    stop("nuclear_ratio_threshold must be a numeric value between 0 and 1")
+  if (!is.numeric(nuclear_ratio_threshold) || nuclear_ratio_threshold < 0 || nuclear_ratio_threshold > 5) {
+    stop("nuclear_ratio_threshold must be a numeric value between 0 and 5")
   }
   if (!is.numeric(nuclear_min_bit_score) || nuclear_min_bit_score <= 0) {
     stop("nuclear_min_bit_score must be a positive numeric value")
@@ -46,7 +46,9 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
                       stringsAsFactors = FALSE))
   }
   
-  b_mt  <- load_bed(bed_mt); b_pt  <- load_bed(bed_pt); b_nuc <- load_bed(bed_nuc)
+  b_mt  <- load_bed(bed_mt)
+  b_pt  <- load_bed(bed_pt)
+  b_nuc <- load_bed(bed_nuc)
   
   trna_regex <- "^trn|tRNA"
   rrna_regex <- "^rrn|rRNA|[0-9]+S_rRNA"
@@ -88,15 +90,8 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         ov  <- bed[bed$chrom == tolower(hit[[id_col]]) & bed$start < hit[[e_col]] & bed$end > hit[[s_col]], ]
         
         if (nrow(ov) == 0) {
-          return(list(
-            text       = NA,
-            sum_g      = 0,
-            sum_t      = 0,
-            has_genes  = FALSE,
-            only_rna   = FALSE,
-            only_trna  = FALSE,
-            only_rrna  = FALSE
-          ))
+          return(list(text = NA, sum_g = 0, sum_t = 0, has_genes = FALSE, 
+                      only_rna = FALSE, only_trna = FALSE, only_rrna = FALSE))
         }
         
         is_trna <- grepl(trna_regex, ov$name, ignore.case = TRUE)
@@ -111,37 +106,24 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
           ov_len <- max(0, min(target_ov$end[j], hit[[e_col]]) - max(target_ov$start[j], hit[[s_col]]))
           c(g_perc = (ov_len / g_len) * 100,
             t_perc = (ov_len / hit$alig_length) * 100,
-            ov_len = ov_len,
-            g_len  = g_len)
+            ov_len = ov_len, g_len = g_len)
         })
         gene_mat <- do.call(rbind, gene_list)
         
         res_text <- paste(
           sapply(1:nrow(target_ov), function(j) {
-            paste0(
-              target_ov$name[j],
-              " (g_len=",  gene_mat[j, "g_len"],
-              ", ov_len=", round(gene_mat[j, "ov_len"], 0),
-              ", g_perc=", round(gene_mat[j, "g_perc"], 1), 
-              "%, t_perc=", round(gene_mat[j, "t_perc"], 1), "%)"
-            )
-          }),
-          collapse = "; "
-        )
+            paste0(target_ov$name[j], " (g_len=", gene_mat[j, "g_len"],
+                   ", ov_len=", round(gene_mat[j, "ov_len"], 0),
+                   ", g_perc=", round(gene_mat[j, "g_perc"], 1), 
+                   "%, t_perc=", round(gene_mat[j, "t_perc"], 1), "%)")
+          }), collapse = "; ")
         
         only_trna <- all(is_trna[is_rna]) && any(is_trna)
         only_rrna <- all(is_rrna[is_rna]) && any(is_rrna)
         only_rna_all <- all(is_rna) && any(is_rna)
         
-        return(list(
-          text       = res_text,
-          sum_g      = sum(gene_mat[,"g_perc"]),
-          sum_t      = sum(gene_mat[,"t_perc"]),
-          has_genes  = TRUE,
-          only_rna   = only_rna_all,
-          only_trna  = only_trna,
-          only_rrna  = only_rrna
-        ))
+        return(list(text = res_text, sum_g = sum(gene_mat[,"g_perc"]), sum_t = sum(gene_mat[,"t_perc"]),
+                    has_genes = TRUE, only_rna = only_rna_all, only_trna = only_trna, only_rrna = only_rrna))
       })
     }
     
@@ -161,14 +143,23 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
       
       if (!is.null(nuc_validation_blast)) {
         tryCatch({
-          relevant_nuc <- nuc_validation_blast[
+          relevant_nuc_query <- nuc_validation_blast[
             nuc_validation_blast$query_id == blast_n$query_id[i], ]
           
-          if (nrow(relevant_nuc) > 0) {
-            nuc_q_start <- pmin(as.numeric(relevant_nuc$q_start), as.numeric(relevant_nuc$q_end))
-            nuc_q_end   <- pmax(as.numeric(relevant_nuc$q_start), as.numeric(relevant_nuc$q_end))
+          relevant_nuc_subject <- nuc_validation_blast[
+            nuc_validation_blast$query_id == blast_n$subject_id[i], ]
+          
+          if (nrow(relevant_nuc_query) > 0 && nrow(relevant_nuc_subject) > 0) {
+            blast_n$nuclear_paralog_flag[i] <- "BOTH_ENDPOINTS_NUCLEAR"
+            blast_n$direction[i] <- "Undefined (Both endpoints in nuclear)"
+            next
+          }
+          
+          if (nrow(relevant_nuc_query) > 0) {
+            nuc_q_start <- pmin(as.numeric(relevant_nuc_query$q_start), as.numeric(relevant_nuc_query$q_end))
+            nuc_q_end   <- pmax(as.numeric(relevant_nuc_query$q_start), as.numeric(relevant_nuc_query$q_end))
             
-            nuc_cross <- relevant_nuc[
+            nuc_cross <- relevant_nuc_query[
               nuc_q_start < blast_n$q_end_fix[i] & nuc_q_end > blast_n$q_start_fix[i], ]
             
             if (nrow(nuc_cross) > 0) {
@@ -176,19 +167,64 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
               best_nuc <- nuc_cross[best_nuc_idx, ]
               
               current_bit_score <- as.numeric(blast_n$bit_score[i])
+              current_alig_length <- as.numeric(blast_n$alig_length[i])
               nuc_bit_score <- as.numeric(best_nuc$bit_score)
+              nuc_alig_length <- as.numeric(best_nuc$alig_length)
               
-              if (!is.na(nuc_bit_score) && !is.na(current_bit_score) && current_bit_score > 0) {
-                ratio <- nuc_bit_score / current_bit_score
+              if (!is.na(nuc_bit_score) && !is.na(current_bit_score) && 
+                  !is.na(nuc_alig_length) && !is.na(current_alig_length) &&
+                  current_alig_length > 0 && nuc_alig_length > 0) {
                 
-                if (nuc_bit_score >= nuclear_min_bit_score && 
-                    ratio >= nuclear_ratio_threshold) {
+                nuc_density <- nuc_bit_score / nuc_alig_length
+                cur_density <- current_bit_score / current_alig_length
+                density_ratio <- nuc_density / cur_density
+                
+                if (nuc_density >= (nuclear_min_bit_score / 1000) && 
+                    density_ratio >= nuclear_ratio_threshold) {
                   blast_n$nuclear_paralog_flag[i] <- paste0(
-                    "NUCLEAR_PARALOG_RISK [NUC_score=", round(nuc_bit_score, 1),
-                    " vs ", tolower(s_label), "_score=", round(current_bit_score, 1),
-                    " ratio=", round(ratio, 2), "]"
+                    "QUERY_NUCLEAR_RISK [NUC_density=", round(nuc_density, 2),
+                    " vs ", tolower(s_label), "_density=", round(cur_density, 2),
+                    " ratio=", round(density_ratio, 2), "]"
                   )
-                  blast_n$direction[i] <- "Undefined (Nuclear paralog)"
+                  blast_n$direction[i] <- "Undefined (Query nuclear paralog)"
+                  next
+                }
+              }
+            }
+          }
+          
+          if (nrow(relevant_nuc_subject) > 0 && is.na(blast_n$nuclear_paralog_flag[i])) {
+            nuc_q_start <- pmin(as.numeric(relevant_nuc_subject$q_start), as.numeric(relevant_nuc_subject$q_end))
+            nuc_q_end   <- pmax(as.numeric(relevant_nuc_subject$q_start), as.numeric(relevant_nuc_subject$q_end))
+            
+            nuc_cross <- relevant_nuc_subject[
+              nuc_q_start < blast_n$s_end_fix[i] & nuc_q_end > blast_n$s_start_fix[i], ]
+            
+            if (nrow(nuc_cross) > 0) {
+              best_nuc_idx <- which.max(as.numeric(nuc_cross$bit_score))
+              best_nuc <- nuc_cross[best_nuc_idx, ]
+              
+              current_bit_score <- as.numeric(blast_n$bit_score[i])
+              current_alig_length <- as.numeric(blast_n$alig_length[i])
+              nuc_bit_score <- as.numeric(best_nuc$bit_score)
+              nuc_alig_length <- as.numeric(best_nuc$alig_length)
+              
+              if (!is.na(nuc_bit_score) && !is.na(current_bit_score) && 
+                  !is.na(nuc_alig_length) && !is.na(current_alig_length) &&
+                  current_alig_length > 0 && nuc_alig_length > 0) {
+                
+                nuc_density <- nuc_bit_score / nuc_alig_length
+                cur_density <- current_bit_score / current_alig_length
+                density_ratio <- nuc_density / cur_density
+                
+                if (nuc_density >= (nuclear_min_bit_score / 1000) && 
+                    density_ratio >= nuclear_ratio_threshold) {
+                  blast_n$nuclear_paralog_flag[i] <- paste0(
+                    "SUBJECT_NUCLEAR_RISK [NUC_density=", round(nuc_density, 2),
+                    " vs ", tolower(q_label), "_density=", round(cur_density, 2),
+                    " ratio=", round(density_ratio, 2), "]"
+                  )
+                  blast_n$direction[i] <- "Undefined (Subject nuclear paralog)"
                   next
                 }
               }
@@ -217,8 +253,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
               blast_n$direction[i] <- paste0("Excluded: Stronger match in ", validation_label)
               blast_n$excluded_coords[i] <- paste0(
                 validation_label, " [", best_c$s_start, "-", best_c$s_end, 
-                "] score=", round(best_c_score, 1)
-              )
+                "] score=", round(best_c_score, 1))
               next
             }
           }
@@ -227,68 +262,40 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         })
       }
       
-      m_has_genes <- m$has_genes
-      p_has_genes <- p$has_genes
-      m_only_rna  <- m$only_rna
-      p_only_rna  <- p$only_rna
-      m_only_trna <- m$only_trna
-      p_only_trna <- p$only_trna
-      m_only_rrna <- m$only_rrna
-      p_only_rrna <- p$only_rrna
+      m_has_genes <- m$has_genes; p_has_genes <- p$has_genes
+      m_only_rna <- m$only_rna; p_only_rna <- p$only_rna
+      m_only_trna <- m$only_trna; p_only_trna <- p$only_trna
+      m_only_rrna <- m$only_rrna; p_only_rrna <- p$only_rrna
       
       if ((m_only_rna && !p_has_genes) || (!m_has_genes && p_only_rna)) {
-        blast_n$direction[i] <- "Undefined (RNA vs NA)"
-        next
+        blast_n$direction[i] <- "Undefined (RNA vs NA)"; next
       }
-      
       if (m_has_genes && !p_has_genes) {
-        blast_n$direction[i] <- paste(q_label, "->", s_label)
-        next
+        blast_n$direction[i] <- paste(q_label, "->", s_label); next
       } else if (!m_has_genes && p_has_genes) {
-        blast_n$direction[i] <- paste(s_label, "->", q_label)
-        next
+        blast_n$direction[i] <- paste(s_label, "->", q_label); next
       } else if (!m_has_genes && !p_has_genes) {
-        blast_n$direction[i] <- "Undefined (No genes)"
-        next
+        blast_n$direction[i] <- "Undefined (No genes)"; next
       }
       
       if (m_only_rna && p_only_rna) {
-        if (m_only_rrna && p_only_rrna) {
-          blast_n$direction[i] <- "Undefined (rRNA vs rRNA)"
-          next
-        }
-        if (m_only_trna && p_only_trna) {
-          blast_n$direction[i] <- "Undefined (tRNA vs tRNA)"
-          next
-        }
-        if ((m_only_trna && p_only_rrna) || (m_only_rrna && p_only_trna)) {
-          blast_n$direction[i] <- "Undefined (tRNA vs rRNA)"
-          next
-        }
-        blast_n$direction[i] <- "Undefined (Mixed RNA)"
-        next
+        if (m_only_rrna && p_only_rrna) { blast_n$direction[i] <- "Undefined (rRNA vs rRNA)"; next }
+        if (m_only_trna && p_only_trna) { blast_n$direction[i] <- "Undefined (tRNA vs tRNA)"; next }
+        if ((m_only_trna && p_only_rrna) || (m_only_rrna && p_only_trna)) { 
+          blast_n$direction[i] <- "Undefined (tRNA vs rRNA)"; next }
+        blast_n$direction[i] <- "Undefined (Mixed RNA)"; next
       }
       
       if (!m_only_rna && p_only_rna) {
-        blast_n$direction[i] <- paste(q_label, "->", s_label)
-        next
+        blast_n$direction[i] <- paste(q_label, "->", s_label); next
       } else if (m_only_rna && !p_only_rna) {
-        blast_n$direction[i] <- paste(s_label, "->", q_label)
-        next
+        blast_n$direction[i] <- paste(s_label, "->", q_label); next
       }
       
       if (abs(m$sum_g - p$sum_g) >= gene_buffer) {
-        blast_n$direction[i] <- if (m$sum_g > p$sum_g) {
-          paste(q_label, "->", s_label)
-        } else {
-          paste(s_label, "->", q_label)
-        }
+        blast_n$direction[i] <- if (m$sum_g > p$sum_g) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
       } else if (abs(m$sum_t - p$sum_t) >= trans_buffer) {
-        blast_n$direction[i] <- if (m$sum_t > p$sum_t) {
-          paste(q_label, "->", s_label)
-        } else {
-          paste(s_label, "->", q_label)
-        }
+        blast_n$direction[i] <- if (m$sum_t > p$sum_t) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
       }
     }
     
@@ -320,13 +327,9 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
     }
   }
   
-  order_cols <- c(
-    "query_id", "subject_id", "perc_identity", "alig_length",
-    "q_start", "q_end", "s_start", "s_end", 
-    "evalue", "bit_score",
-    "mt_genes", "pt_genes", "nuc_genes",
-    "direction", "excluded_coords", "nuclear_paralog_flag"
-  )
+  order_cols <- c("query_id", "subject_id", "perc_identity", "alig_length",
+                  "q_start", "q_end", "s_start", "s_end", "evalue", "bit_score",
+                  "mt_genes", "pt_genes", "nuc_genes", "direction", "excluded_coords", "nuclear_paralog_flag")
   
   for(c in order_cols) if(!(c %in% names(final_df))) final_df[[c]] <- NA
   
@@ -338,3 +341,4 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   
   return(final_df[, order_cols])
 }
+
