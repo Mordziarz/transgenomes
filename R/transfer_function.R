@@ -33,11 +33,13 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     )
   }
 
-  b_mt <- load_bed_local(bed_mt)
-  b_pt <- load_bed_local(bed_pt)
+  b_mt  <- load_bed_local(bed_mt)
+  b_pt  <- load_bed_local(bed_pt)
   
-  # Expanded regex for tRNA and rRNA
-  rna_regex <- "^trn|tRNA|^rrn|rRNA|[0-9]+S_rRNA"
+  # Updated regex to include rRNA and specific patterns
+  trna_regex <- "^trn|tRNA"
+  rrna_regex <- "^rrn|rRNA|[0-9]+S_rRNA"
+  combined_non_coding_regex <- paste0(trna_regex, "|", rrna_regex)
 
   message("Running BLASTn (MT vs PT)...")
   blast_n <- metablastr::blast_nucleotide_to_nucleotide(
@@ -65,21 +67,25 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   blast_n$s_start_fix <- pmin(as.numeric(blast_n$s_start), as.numeric(blast_n$s_end))
   blast_n$s_end_fix   <- pmax(as.numeric(blast_n$s_start), as.numeric(blast_n$s_end))
 
-  # Helper to merge overlapping intervals and return total length
-  get_merged_length <- function(intervals) {
-    if (nrow(intervals) == 0) return(0)
-    intervals <- intervals[order(intervals$start), ]
-    merged <- intervals[1, ]
-    if (nrow(intervals) > 1) {
-      for (i in 2:nrow(intervals)) {
-        if (intervals$start[i] <= merged$end[nrow(merged)]) {
-          merged$end[nrow(merged)] <- max(merged$end[nrow(merged)], intervals$end[i])
+  # Function to merge overlapping intervals to get real DNA coverage
+  merge_intervals <- function(starts, ends) {
+    if (length(starts) == 0) return(0)
+    ord <- order(starts)
+    s <- starts[ord]; e <- ends[ord]
+    merged_start <- s[1]; merged_end <- e[1]
+    total_len <- 0
+    if(length(s) > 1) {
+      for (i in 2:length(s)) {
+        if (s[i] <= merged_end) {
+          merged_end <- max(merged_end, e[i])
         } else {
-          merged <- rbind(merged, intervals[i, ])
+          total_len <- total_len + (merged_end - merged_start)
+          merged_start <- s[i]; merged_end <- e[i]
         }
       }
     }
-    sum(merged$end - merged$start)
+    total_len <- total_len + (merged_end - merged_start)
+    return(total_len)
   }
 
   annotate_and_get_metrics <- function(df, bed, prefix) {
@@ -94,44 +100,52 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
                         bed$end > hit[[b_start_col]], ]
       
       if (nrow(overlaps) == 0) {
-        return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, has_pcg = FALSE, only_rna = FALSE))
+        return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, only_nc = FALSE, has_protein = FALSE))
       }
       
-      is_rna <- grepl(rna_regex, overlaps$name, ignore.case = TRUE)
-      has_pcg <- any(!is_rna)
-      only_rna <- all(is_rna)
+      # Check for tRNA and rRNA
+      is_nc <- grepl(combined_non_coding_regex, overlaps$name, ignore.case = TRUE)
+      only_nc <- all(is_nc)
+      has_protein <- any(!is_nc)
       
-      # For statistics, if PCG exists, we ignore RNA (as requested)
-      stats_overlaps <- if(has_pcg) overlaps[!is_rna, ] else overlaps
+      # Logic: Only use protein-coding genes for statistics if they exist
+      stats_overlaps <- if(has_protein) overlaps[!is_nc, ] else overlaps
       
-      # Calculate total unique nucleotides covered by genes in the alignment
-      covered_intervals <- data.frame(
-        start = pmax(stats_overlaps$start, hit[[b_start_col]]),
-        end = pmin(stats_overlaps$end, hit[[b_end_col]])
-      )
+      # Overlap calculation with merged intervals to avoid > 100%
+      # 1. Calculate unique nucleotides of genes covered by alignment
+      rel_ov_starts <- pmax(stats_overlaps$start, hit[[b_start_col]])
+      rel_ov_ends <- pmin(stats_overlaps$end, hit[[b_end_col]])
+      unique_ov_len <- merge_intervals(rel_ov_starts, rel_ov_ends)
       
-      unique_ov_len <- get_merged_length(covered_intervals)
+      # 2. Total unique length of the involved genes themselves
+      unique_gene_len <- merge_intervals(stats_overlaps$start, stats_overlaps$end)
       
-      # Calculate total unique nucleotides of the genes themselves (for g_perc)
-      gene_total_len <- get_merged_length(stats_overlaps[, c("start", "end")])
-      
-      sum_g_perc <- (unique_ov_len / gene_total_len) * 100
+      sum_g_perc <- (unique_ov_len / unique_gene_len) * 100
       sum_t_perc <- (unique_ov_len / hit$alig_length) * 100
       
-      # Text annotation for all genes
-      res_text <- sapply(1:nrow(overlaps), function(j) {
+      # Keep the individual gene descriptions as requested
+      gene_results <- list()
+      for(j in 1:nrow(overlaps)) {
+        g_len  <- overlaps$end[j] - overlaps$start[j]
         ov_len <- max(0, min(overlaps$end[j], hit[[b_end_col]]) - max(overlaps$start[j], hit[[b_start_col]]))
-        g_len <- overlaps$end[j] - overlaps$start[j]
-        paste0(overlaps$name[j], " (g_len=", g_len, 
-               ", ov_len=", round(ov_len, 0), 
-               ", g_perc=", round((ov_len/g_len)*100, 1), "%)")
+        g_perc <- (ov_len / g_len) * 100
+        t_perc <- (ov_len / hit$alig_length) * 100
+        gene_results[[j]] <- list(g_perc = g_perc, t_perc = t_perc, g_len = g_len, 
+                                  ov_len = ov_len, name = overlaps$name[j])
+      }
+      
+      res_text <- sapply(gene_results, function(x) {
+        paste0(x$name, " (g_len=", x$g_len, 
+               ", ov_len=", round(x$ov_len, 0), 
+               ", g_perc=", round(x$g_perc, 1), "%, ",
+               "t_perc=", round(x$t_perc, 1), "%)")
       })
       
       return(list(text = paste(res_text, collapse = "; "), 
                   sum_g_perc = sum_g_perc, 
                   sum_t_perc = sum_t_perc, 
-                  has_pcg = has_pcg,
-                  only_rna = only_rna))
+                  only_nc = only_nc,
+                  has_protein = has_protein))
     })
   }
 
@@ -146,23 +160,20 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   for (i in 1:nrow(blast_n)) {
     m <- mt_ann[[i]]; p <- pt_ann[[i]]
     
-    # Logic for RNA-only cases
-    if (m$only_rna && p$only_rna) {
-      blast_n$direction[i] <- "Unidentified"
+    # If both sides are only tRNA/rRNA or no genes, it's Unidentified
+    if ((m$only_nc && p$only_nc) || (!m$has_protein && !p$has_protein)) {
+      # Except if only one side has a protein-coding gene, then it MUST be a transfer
+      if (m$has_protein && !p$has_protein) {
+        blast_n$direction[i] <- "MT -> PT"
+      } else if (!m$has_protein && p$has_protein) {
+        blast_n$direction[i] <- "PT -> MT"
+      } else {
+        blast_n$direction[i] <- "Unidentified"
+      }
       next
     }
     
-    # If one side has PCG and other doesn't, that's the source
-    if (m$has_pcg && !p$has_pcg) {
-      blast_n$direction[i] <- "MT -> PT"
-      next
-    }
-    if (!m$has_pcg && p$has_pcg) {
-      blast_n$direction[i] <- "PT -> MT"
-      next
-    }
-    
-    # If both have PCG, use buffers
+    # Statistical determination based on normalized (merged) gene percentages
     g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
     if (g_diff >= gene_buffer) {
       blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) "MT -> PT" else "PT -> MT"
