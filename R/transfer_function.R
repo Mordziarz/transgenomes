@@ -36,7 +36,8 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   b_mt  <- load_bed_local(bed_mt)
   b_pt  <- load_bed_local(bed_pt)
   
-  rna_regex <- "^trn|tRNA|^rrn|rRNA|[0-9]+S_rRNA"
+  # Połączony regex dla tRNA i rRNA
+  non_coding_regex <- "^trn|tRNA|^rrn|rRNA|[0-9]+S_rRNA"
 
   message("Running BLASTn (MT vs PT)...")
   blast_n <- metablastr::blast_nucleotide_to_nucleotide(
@@ -44,10 +45,7 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     db.import = FALSE, task = "blastn", evalue = evalue_cut_off
   )
   
-  if (nrow(blast_n) == 0) {
-    message("No BLAST hits found.")
-    return(NULL)
-  }
+  if (nrow(blast_n) == 0) return(NULL)
 
   blast_n$alig_length <- as.numeric(blast_n$alig_length)
   blast_n$perc_identity <- as.numeric(blast_n$perc_identity)
@@ -57,6 +55,7 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   
   if (nrow(blast_n) == 0) return(NULL)
 
+  # Przygotowanie koordynatów
   blast_n$q_id_low <- tolower(blast_n$query_id)
   blast_n$s_id_low <- tolower(blast_n$subject_id)
   blast_n$q_start_fix <- pmin(as.numeric(blast_n$q_start), as.numeric(blast_n$q_end))
@@ -79,66 +78,50 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
         return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, has_cds = FALSE))
       }
       
-      is_rna <- grepl(rna_regex, overlaps$name, ignore.case = TRUE)
-      has_cds <- any(!is_rna)
-      
-      unique_coords <- data.frame(
-        start = pmax(overlaps$start, hit[[b_start_col]]),
-        end = pmin(overlaps$end, hit[[b_end_col]])
-      )
-      unique_coords <- unique_coords[order(unique_coords$start), ]
-      
-      if(nrow(unique_coords) > 1) {
-        reduced <- unique_coords[1, ]
-        for(k in 2:nrow(unique_coords)) {
-          if(unique_coords$start[k] < reduced$end[nrow(reduced)]) {
-            reduced$end[nrow(reduced)] <- max(reduced$end[nrow(reduced)], unique_coords$end[k])
-          } else {
-            reduced <- rbind(reduced, unique_coords[k, ])
-          }
-        }
-        unique_ov_len <- sum(reduced$end - reduced$start)
-      } else {
-        unique_ov_len <- unique_coords$end - unique_coords$start
-      }
+      # Sprawdzenie czy są geny kodujące (nie tRNA/rRNA)
+      is_non_coding <- grepl(non_coding_regex, overlaps$name, ignore.case = TRUE)
+      has_cds <- any(!is_non_coding)
       
       gene_results <- list()
       for(j in 1:nrow(overlaps)) {
         g_len  <- overlaps$end[j] - overlaps$start[j]
         ov_len <- max(0, min(overlaps$end[j], hit[[b_end_col]]) - max(overlaps$start[j], hit[[b_start_col]]))
-        gene_results[[j]] <- list(g_perc = (ov_len / g_len) * 100, 
-                                  t_perc = (ov_len / hit$alig_length) * 100, 
-                                  g_len = g_len, ov_len = ov_len, name = overlaps$name[j])
+        
+        g_perc <- (ov_len / g_len) * 100
+        t_perc <- (ov_len / hit$alig_length) * 100
+        
+        gene_results[[j]] <- list(g_perc = g_perc, t_perc = t_perc, g_len = g_len, 
+                                  ov_len = ov_len, name = overlaps$name[j], is_cds = !is_non_coding[j])
       }
       
-      sum_g_perc <- sum(sapply(gene_results, function(x) x$g_perc))
-      sum_t_perc <- (unique_ov_len / hit$alig_length) * 100
+      # Obliczanie sumy tylko dla CDS (rozwiązuje problem nakładania się z tRNA/rRNA)
+      cds_genes <- Filter(function(x) x$is_cds, gene_results)
+      sum_g_perc <- if(length(cds_genes) > 0) sum(sapply(cds_genes, function(x) x$g_perc)) else 0
+      sum_t_perc <- if(length(cds_genes) > 0) sum(sapply(cds_genes, function(x) x$t_perc)) else 0
       
       res_text <- sapply(gene_results, function(x) {
-        paste0(x$name, " (g_len=", x$g_len, ", ov_len=", round(x$ov_len, 0), 
-               ", g_perc=", round(x$g_perc, 1), "%, t_perc=", round(x$t_perc, 1), "%)")
+        paste0(x$name, " (ov=", round(x$ov_len, 0), ", g_perc=", round(x$g_perc, 1), "%)")
       })
       
       return(list(text = paste(res_text, collapse = "; "), 
-                  sum_g_perc = sum_g_perc, sum_t_perc = sum_t_perc, has_cds = has_cds))
+                  sum_g_perc = sum_g_perc, 
+                  sum_t_perc = sum_t_perc, 
+                  has_cds = has_cds))
     })
   }
 
+  message("Annotating results...")
   mt_ann <- annotate_and_get_metrics(blast_n, b_mt, "q")
   pt_ann <- annotate_and_get_metrics(blast_n, b_pt, "s")
   
   blast_n$mt_genes <- sapply(mt_ann, function(x) x$text)
   blast_n$pt_genes <- sapply(pt_ann, function(x) x$text)
-  blast_n$direction <- "Unidentified"
+  blast_n$direction <- "unidentified"
 
   for (i in 1:nrow(blast_n)) {
     m <- mt_ann[[i]]; p <- pt_ann[[i]]
     
-    if (!m$has_cds && !p$has_cds) {
-      blast_n$direction[i] <- "Unidentified"
-      next
-    }
-    
+    # 1. Jeżeli tylko jedna strona ma gen kodujący białko - tam jest źródło
     if (m$has_cds && !p$has_cds) {
       blast_n$direction[i] <- "MT -> PT"
       next
@@ -148,19 +131,25 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
       next
     }
     
-    g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
-    if (g_diff >= gene_buffer) {
-      blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) "MT -> PT" else "PT -> MT"
-    } else {
-      t_diff <- abs(m$sum_t_perc - p$sum_t_perc)
-      if (t_diff >= trans_buffer) {
-        blast_n$direction[i] <- if(m$sum_t_perc > p$sum_t_perc) "MT -> PT" else "PT -> MT"
+    # 2. Jeżeli obie mają CDS lub obie nie mają, używamy bufora procentowego (tylko dla CDS)
+    if (m$has_cds && p$has_cds) {
+      g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
+      if (g_diff >= gene_buffer) {
+        blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) "MT -> PT" else "PT -> MT"
+      } else {
+        t_diff <- abs(m$sum_t_perc - p$sum_t_perc)
+        if (t_diff >= trans_buffer) {
+          blast_n$direction[i] <- if(m$sum_t_perc > p$sum_t_perc) "MT -> PT" else "PT -> MT"
+        }
       }
     }
+    # W innym przypadku zostaje "unidentified"
   }
 
+  # Czyszczenie
   cols_to_remove <- c("q_start_fix", "q_end_fix", "s_start_fix", "s_end_fix", "q_id_low", "s_id_low")
   blast_n <- blast_n[, !(names(blast_n) %in% cols_to_remove)]
   
+  message("Done!")
   return(as.data.frame(blast_n))
 }
