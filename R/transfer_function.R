@@ -10,6 +10,7 @@
 #' @param gene_buffer Min difference in sum of gene_perc (default: 20).
 #' @param trans_buffer Min difference in sum of transfer_perc (default: 20).
 #' @export
+
 transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt, 
                               evalue_cut_off = 1e-06, 
                               min_length = 100,
@@ -18,7 +19,7 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
                               trans_buffer = 20) {
   
   if (missing(fasta_mt) || missing(fasta_pt) || missing(bed_mt) || missing(bed_pt)) {
-    stop("All input files are required.")
+    stop("Wszystkie pliki wejściowe są wymagane.")
   }
 
   load_bed_local <- function(bed_input) {
@@ -32,18 +33,19 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     )
   }
 
-  b_mt  <- load_bed_local(bed_mt)
-  b_pt  <- load_bed_local(bed_pt)
-  trna_regex <- "^trn|tRNA"
+  b_mt <- load_bed_local(bed_mt)
+  b_pt <- load_bed_local(bed_pt)
+  
+  rna_regex <- "^trn|tRNA|^rrn|rRNA|[0-9]+S_rRNA"
 
-  message("Running BLASTn (MT vs PT)...")
+  message("Uruchamianie BLASTn...")
   blast_n <- metablastr::blast_nucleotide_to_nucleotide(
     query = fasta_mt, subject = fasta_pt,
     db.import = FALSE, task = "blastn", evalue = evalue_cut_off
   )
   
   if (nrow(blast_n) == 0) {
-    message("No BLAST hits found.")
+    message("Brak dopasowań BLAST.")
     return(NULL)
   }
 
@@ -51,7 +53,7 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   blast_n$perc_identity <- as.numeric(blast_n$perc_identity)
   
   blast_n <- blast_n[blast_n$alig_length >= min_length & 
-                       blast_n$perc_identity >= min_identity, ]
+                     blast_n$perc_identity >= min_identity, ]
   
   if (nrow(blast_n) == 0) return(NULL)
 
@@ -61,6 +63,28 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   blast_n$q_end_fix   <- pmax(as.numeric(blast_n$q_start), as.numeric(blast_n$q_end))
   blast_n$s_start_fix <- pmin(as.numeric(blast_n$s_start), as.numeric(blast_n$s_end))
   blast_n$s_end_fix   <- pmax(as.numeric(blast_n$s_start), as.numeric(blast_n$s_end))
+
+  get_unique_overlap <- function(intervals) {
+    if (nrow(intervals) == 0) return(0)
+    intervals <- intervals[order(intervals$start), ]
+    sum_len <- 0
+    curr_start <- intervals$start[1]
+    curr_end <- intervals$end[1]
+    
+    if(nrow(intervals) > 1) {
+      for(i in 2:nrow(intervals)) {
+        if(intervals$start[i] < curr_end) {
+          curr_end <- max(curr_end, intervals$end[i])
+        } else {
+          sum_len <- sum_len + (curr_end - curr_start)
+          curr_start <- intervals$start[i]
+          curr_end <- intervals$end[i]
+        }
+      }
+    }
+    sum_len <- sum_len + (curr_end - curr_start)
+    return(sum_len)
+  }
 
   annotate_and_get_metrics <- function(df, bed, prefix) {
     chrom_col   <- if(prefix == "q") "q_id_low" else "s_id_low"
@@ -74,54 +98,49 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
                         bed$end > hit[[b_start_col]], ]
       
       if (nrow(overlaps) == 0) {
-        return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, only_trna = FALSE))
+        return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, has_cds = FALSE))
       }
       
-      is_trna <- grepl(trna_regex, overlaps$name, ignore.case = TRUE)
-      only_trna <- all(is_trna)
+      is_rna <- grepl(rna_regex, overlaps$name, ignore.case = TRUE)
+      has_cds <- any(!is_rna)
       
-      gene_results <- list()
-      for(j in 1:nrow(overlaps)) {
-        g_len  <- overlaps$end[j] - overlaps$start[j]
+      ov_intervals <- data.frame(
+        start = pmax(overlaps$start, hit[[b_start_col]]),
+        end = pmin(overlaps$end, hit[[b_end_col]])
+      )
+      unique_ov_len <- get_unique_overlap(ov_intervals)
+      
+      res_text <- sapply(1:nrow(overlaps), function(j) {
+        g_len <- overlaps$end[j] - overlaps$start[j]
         ov_len <- max(0, min(overlaps$end[j], hit[[b_end_col]]) - max(overlaps$start[j], hit[[b_start_col]]))
-        
-        g_perc <- (ov_len / g_len) * 100
-        t_perc <- (ov_len / hit$alig_length) * 100
-        
-        gene_results[[j]] <- list(g_perc = g_perc, t_perc = t_perc, g_len = g_len, 
-                                  ov_len = ov_len, name = overlaps$name[j])
-      }
-      
-      sum_g_perc <- sum(sapply(gene_results, function(x) x$g_perc))
-      sum_t_perc <- sum(sapply(gene_results, function(x) x$t_perc))
-      
-      res_text <- sapply(gene_results, function(x) {
-        paste0(x$name, " (g_len=", x$g_len, 
-               ", ov_len=", round(x$ov_len, 0), 
-               ", g_perc=", round(x$g_perc, 1), "%, ",
-               "t_perc=", round(x$t_perc, 1), "%)")
+        paste0(overlaps$name[j], " (ov=", round(ov_len, 0), ", g_perc=", round((ov_len/g_len)*100, 1), "%)")
       })
       
+      total_g_perc <- sum(sapply(1:nrow(overlaps), function(j) {
+        ov_len <- max(0, min(overlaps$end[j], hit[[b_end_col]]) - max(overlaps$start[j], hit[[b_start_col]]))
+        (ov_len / (overlaps$end[j] - overlaps$start[j])) * 100
+      }))
+
       return(list(text = paste(res_text, collapse = "; "), 
-                  sum_g_perc = sum_g_perc, 
-                  sum_t_perc = sum_t_perc, 
-                  only_trna = only_trna))
+                  sum_g_perc = total_g_perc, 
+                  sum_t_perc = (unique_ov_len / hit$alig_length) * 100, 
+                  has_cds = has_cds))
     })
   }
 
-  message("Annotating results...")
+  message("Analiza genów i kierunku...")
   mt_ann <- annotate_and_get_metrics(blast_n, b_mt, "q")
   pt_ann <- annotate_and_get_metrics(blast_n, b_pt, "s")
   
   blast_n$mt_genes <- sapply(mt_ann, function(x) x$text)
   blast_n$pt_genes <- sapply(pt_ann, function(x) x$text)
-  blast_n$direction <- "unknown"
+  blast_n$direction <- "Unidentified"
 
   for (i in 1:nrow(blast_n)) {
     m <- mt_ann[[i]]; p <- pt_ann[[i]]
     
-    if (m$only_trna && p$only_trna) {
-      blast_n$direction[i] <- "unknown"
+    if (!m$has_cds || !p$has_cds) {
+      blast_n$direction[i] <- "Unidentified"
       next
     }
     
@@ -139,6 +158,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   cols_to_remove <- c("q_start_fix", "q_end_fix", "s_start_fix", "s_end_fix", "q_id_low", "s_id_low")
   blast_n <- blast_n[, !(names(blast_n) %in% cols_to_remove)]
   
-  message("Done!")
+  message("Gotowe!")
   return(as.data.frame(blast_n))
 }
