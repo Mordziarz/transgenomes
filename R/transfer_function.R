@@ -10,7 +10,6 @@
 #' @param gene_buffer Min difference in sum of gene_perc (default: 20).
 #' @param trans_buffer Min difference in sum of transfer_perc (default: 20).
 #' @export
-
 transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt, 
                               evalue_cut_off = 1e-06, 
                               min_length = 100,
@@ -36,7 +35,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   b_mt  <- load_bed_local(bed_mt)
   b_pt  <- load_bed_local(bed_pt)
   trna_regex <- "^trn|tRNA"
-  rrna_regex <- "^rrn|rRNA|[0-9]+S_rRNA"
 
   message("Running BLASTn (MT vs PT)...")
   blast_n <- metablastr::blast_nucleotide_to_nucleotide(
@@ -76,77 +74,26 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
                         bed$end > hit[[b_start_col]], ]
       
       if (nrow(overlaps) == 0) {
-        return(list(
-          text = "none", 
-          mean_g_perc = 0, 
-          mean_t_perc = 0, 
-          g_perc_max = 0,
-          only_trna = FALSE, 
-          only_rrna = FALSE, 
-          has_genes = FALSE, 
-          only_rna = FALSE,
-          has_coding = FALSE,
-          has_rna = FALSE
-        ))
+        return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, only_trna = FALSE))
       }
       
       is_trna <- grepl(trna_regex, overlaps$name, ignore.case = TRUE)
-      is_rrna <- grepl(rrna_regex, overlaps$name, ignore.case = TRUE)
-      is_rna  <- is_trna | is_rrna
-      coding_genes <- overlaps[!is_rna, ]
-      
-      target_ov <- if (nrow(coding_genes) > 0) coding_genes else overlaps
+      only_trna <- all(is_trna)
       
       gene_results <- list()
-      g_percs_for_max <- numeric()
-      
-      for(j in 1:nrow(target_ov)) {
-        g_len  <- target_ov$end[j] - target_ov$start[j]
-        ov_len <- max(0, min(target_ov$end[j], hit[[b_end_col]]) - max(target_ov$start[j], hit[[b_start_col]]))
+      for(j in 1:nrow(overlaps)) {
+        g_len  <- overlaps$end[j] - overlaps$start[j]
+        ov_len <- max(0, min(overlaps$end[j], hit[[b_end_col]]) - max(overlaps$start[j], hit[[b_start_col]]))
         
         g_perc <- (ov_len / g_len) * 100
         t_perc <- (ov_len / hit$alig_length) * 100
         
-        gene_results[[j]] <- list(
-          g_perc = g_perc, 
-          t_perc = t_perc, 
-          g_len = g_len, 
-          ov_len = ov_len, 
-          name = target_ov$name[j]
-        )
-        g_percs_for_max[j] <- g_perc
+        gene_results[[j]] <- list(g_perc = g_perc, t_perc = t_perc, g_len = g_len, 
+                                  ov_len = ov_len, name = overlaps$name[j])
       }
       
-      mean_g_perc <- mean(sapply(gene_results, function(x) x$g_perc))
-      mean_t_perc <- mean(sapply(gene_results, function(x) x$t_perc))
-      g_perc_max <- max(g_percs_for_max)
-      
-      segments_sorted <- target_ov[order(target_ov$start), ]
-      merged_segments <- data.frame(start = numeric(), end = numeric())
-      
-      if (nrow(segments_sorted) > 0) {
-        merged_segments <- data.frame(
-          start = segments_sorted$start[1],
-          end = segments_sorted$end[1]
-        )
-        
-        if (nrow(segments_sorted) > 1) {
-          for (j in 2:nrow(segments_sorted)) {
-            if (segments_sorted$start[j] <= merged_segments$end[nrow(merged_segments)]) {
-              merged_segments$end[nrow(merged_segments)] <- max(merged_segments$end[nrow(merged_segments)], segments_sorted$end[j])
-            } else {
-              merged_segments <- rbind(merged_segments, data.frame(start = segments_sorted$start[j], end = segments_sorted$end[j]))
-            }
-          }
-        }
-      }
-      
-      if (nrow(merged_segments) > 0) {
-        total_unique_ov <- sum(merged_segments$end - merged_segments$start)
-        t_perc_merged <- (total_unique_ov / hit$alig_length) * 100
-      } else {
-        t_perc_merged <- 0
-      }
+      sum_g_perc <- sum(sapply(gene_results, function(x) x$g_perc))
+      sum_t_perc <- sum(sapply(gene_results, function(x) x$t_perc))
       
       res_text <- sapply(gene_results, function(x) {
         paste0(x$name, " (g_len=", x$g_len, 
@@ -155,22 +102,10 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
                "t_perc=", round(x$t_perc, 1), "%)")
       })
       
-      only_trna <- all(is_trna[is_rna]) && any(is_trna)
-      only_rrna <- all(is_rrna[is_rna]) && any(is_rrna)
-      only_rna_all <- all(is_rna) && any(is_rna)
-      
-      return(list(
-        text = paste(res_text, collapse = "; "), 
-        mean_g_perc = mean_g_perc, 
-        mean_t_perc = t_perc_merged,
-        g_perc_max = g_perc_max,
-        only_trna = only_trna,
-        only_rrna = only_rrna,
-        has_genes = nrow(target_ov) > 0,
-        only_rna = only_rna_all,
-        has_coding = nrow(coding_genes) > 0,
-        has_rna = nrow(overlaps[is_rna, ]) > 0
-      ))
+      return(list(text = paste(res_text, collapse = "; "), 
+                  sum_g_perc = sum_g_perc, 
+                  sum_t_perc = sum_t_perc, 
+                  only_trna = only_trna))
     })
   }
 
@@ -180,39 +115,23 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   
   blast_n$mt_genes <- sapply(mt_ann, function(x) x$text)
   blast_n$pt_genes <- sapply(pt_ann, function(x) x$text)
-  blast_n$mt_mean_g_perc <- sapply(mt_ann, function(x) x$mean_g_perc)
-  blast_n$mt_mean_t_perc <- sapply(mt_ann, function(x) x$mean_t_perc)
-  blast_n$mt_g_perc_max <- sapply(mt_ann, function(x) x$g_perc_max)
-  blast_n$pt_mean_g_perc <- sapply(pt_ann, function(x) x$mean_g_perc)
-  blast_n$pt_mean_t_perc <- sapply(pt_ann, function(x) x$mean_t_perc)
-  blast_n$pt_g_perc_max <- sapply(pt_ann, function(x) x$g_perc_max)
-  blast_n$direction <- "Undefined"
+  blast_n$direction <- "unknown"
 
   for (i in 1:nrow(blast_n)) {
-    m <- mt_ann[[i]]
-    p <- pt_ann[[i]]
+    m <- mt_ann[[i]]; p <- pt_ann[[i]]
     
-    if (!m$has_coding && !p$has_coding) {
-      blast_n$direction[i] <- "Undefined"
+    if (m$only_trna && p$only_trna) {
+      blast_n$direction[i] <- "unknown"
       next
     }
     
-    if (m$has_coding && !p$has_coding) {
-      blast_n$direction[i] <- "MT -> PT"
-      next
-    }
-    if (!m$has_coding && p$has_coding) {
-      blast_n$direction[i] <- "PT -> MT"
-      next
-    }
-    
-    if (abs(m$g_perc_max - p$g_perc_max) >= gene_buffer) {
-      blast_n$direction[i] <- if(m$g_perc_max > p$g_perc_max) "MT -> PT" else "PT -> MT"
+    g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
+    if (g_diff >= gene_buffer) {
+      blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) "MT -> PT" else "PT -> MT"
     } else {
-      if (abs(m$mean_t_perc - p$mean_t_perc) >= trans_buffer) {
-        blast_n$direction[i] <- if(m$mean_t_perc > p$mean_t_perc) "MT -> PT" else "PT -> MT"
-      } else {
-        blast_n$direction[i] <- "Undefined"
+      t_diff <- abs(m$sum_t_perc - p$sum_t_perc)
+      if (t_diff >= trans_buffer) {
+        blast_n$direction[i] <- if(m$sum_t_perc > p$sum_t_perc) "MT -> PT" else "PT -> MT"
       }
     }
   }
@@ -223,4 +142,3 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   message("Done!")
   return(as.data.frame(blast_n))
 }
-
