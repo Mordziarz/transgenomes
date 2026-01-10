@@ -49,11 +49,12 @@ transfer_function_out <- transfer_function(fasta_mt = "fasta_q.fasta",
                                             gene_buffer = 20,
                                             trans_buffer = 20)
 ```
+Output:
 
 | Column | Description |
 |:---|:---|
-| `query_id` | Identifier of the Mitochondrial sequence (MT). |
-| `subject_id` | Identifier of the Plastid sequence (PT). |
+| `mt_id` | Identifier of the Mitochondrial sequence (MT). |
+| `pt_id` | Identifier of the Plastid sequence (PT). |
 | `perc_identity` | Percentage of identical matches. |
 | `num_ident_matches` | Number of identical nucleotides in the alignment. |
 | `alig_length` | Total length of the alignment (including gaps). |
@@ -62,12 +63,12 @@ transfer_function_out <- transfer_function(fasta_mt = "fasta_q.fasta",
 | `n_gaps` | Total number of gaps (nucleotides). |
 | `pos_match` | Number of positive matches. |
 | `ppos` | Percentage of positive matches. |
-| `q_start` / `q_end` | Start and end positions on the MT sequence. |
-| `q_len` | Total length of the MT sequence. |
+| `mt_start` / `mt_end` | Start and end positions on the MT sequence. |
+| `mt_total_len` | Total length of the MT sequence. |
 | `qcov` | Query coverage per unique subject. |
 | `qcovhsp` | Query coverage per High-scoring Segment Pair (HSP). |
-| `s_start` / `s_end` | Start and end positions on the PT sequence. |
-| `s_len` | Total length of the PT sequence. |
+| `pt_start` / `pt_end` | Start and end positions on the PT sequence. |
+| `pt_total_len` | Total length of the PT sequence. |
 | `evalue` | Expectation value (statistical significance). |
 | `bit_score` | Bit score (normalized quality of alignment). |
 | `score_raw` | Raw alignment score. |
@@ -85,13 +86,12 @@ Each gene in `mt_genes` and `pt_genes` is described using the following syntax:
 
 The function determines the `direction` of DNA transfer based on the following improved logic:
 
-1.  **Protein-Coding Priority**: If an alignment overlaps with a protein-coding gene, any overlapping **tRNA** or **rRNA** (detected via regex) are excluded from the statistical decision to avoid noise from short, conserved sequences.
-2.  **Overlap Correction**: If multiple genes overlap in the same region, the function merges their coordinates to calculate a **non-redundant nucleotide footprint**. This ensures that `g_perc` and `t_perc` represent real DNA coverage and never exceed 100%.
+1.  **Protein-Coding Priority**: If an alignment overlaps with a protein-coding gene on one side and only non-coding elements (**tRNA** or **rRNA**) on the other, the protein-coding gene **always** determines the direction. Non-coding statistics are ignored in this case.
+2.  **Strict Non-Coding Rule**: If both sides of the alignment contain **only tRNA or rRNA** (or no genes at all), the direction is automatically marked as **`Unidentified`**. This prevents conserved non-coding sequences from generating false-positive transfer directions.
 3.  **Direction Assignment**:
-    * **MT -> PT**: Evidence shows the fragment is a gene in MT but is potentially non-functional or a fragment in PT.
-    * **PT -> MT**: Evidence shows the fragment originates from the PT genome (typical for NUPTs/MTPTs).
-    * **Unidentified**: Assigned if both sides only contain tRNA/rRNA, if no genes are present on either side, or if the difference in coverage is below the `gene_buffer` / `trans_buffer` thresholds.
-4.  **Transfer Guarantee**: If only one side of the alignment contains a protein-coding gene (and the other side contains only tRNA/rRNA or no genes), the function automatically assigns the direction to that side rather than marking it as unidentified.
+    * **MT -> PT**: Evidence shows the fragment is a protein-coding gene in MT but is potentially non-functional or only non-coding in PT.
+    * **PT -> MT**: Evidence shows the fragment originates from a protein-coding gene in the PT genome.
+    * **Unidentified**: Assigned if both sides only contain tRNA/rRNA, if no genes are present on either side, or if the difference in protein-coding gene coverage is below the `gene_buffer` / `trans_buffer` thresholds.
 
 
 # Visualization
