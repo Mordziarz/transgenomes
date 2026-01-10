@@ -81,8 +81,8 @@ Each gene in `mt_genes` and `pt_genes` is described using the following syntax:
 
 * **`g_len`**: Total length of the gene in the reference BED file.
 * **`ov_len`**: Number of nucleotides from that gene overlapping with the alignment.
-* **`g_perc`**: Percentage of the gene sequence covered by the transfer ($(\frac{ov\_len}{g\_len}) \times 100$).
-* **`t_perc`**: Percentage of the total alignment length occupied by this gene ($(\frac{ov\_len}{alig\_length}) \times 100$).
+* **`g_perc`**: Percentage of the gene sequence covered by the transfer ($(\frac{ov_len}{g_len}) \times 100$).
+* **`t_perc`**: Percentage of the total alignment length occupied by this gene ($(\frac{ov_len}{alig_length}) \times 100$).
 
 The function determines the `direction` of DNA transfer based on the following improved logic:
 
