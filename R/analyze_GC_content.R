@@ -4,6 +4,8 @@
 #' @param extract_regions_2 A DNAStringSet or DNAStringSetList.
 #' @param group1_name Character string, name for the first group (default: "Group 1").
 #' @param group2_name Character string, name for the second group (default: "Group 2").
+#' @param group1_col Character string, color for the first group (default: "firebrick1").
+#' @param group2_col Character string, color for the second group (default: "dodgerblue1").
 #' @param alpha Significance level for statistical tests (default: 0.05).
 #'
 #' @return A list with plot, test results, method, normality check, and raw data.
@@ -14,9 +16,10 @@ analyze_GC_content <- function(
   extract_regions_2, 
   group1_name = "Group 1", 
   group2_name = "Group 2",
+  group1_col = "firebrick1",
+  group2_col = "dodgerblue1",
   alpha = 0.05
 ) {
-
   prepare_input <- function(x) {
     if (inherits(x, "DNAStringSetList")) return(unlist(x))
     return(x)
@@ -45,7 +48,7 @@ analyze_GC_content <- function(
     norm_test <- data %>%
       dplyr::group_by(group) %>%
       dplyr::summarise(
-        p.value = if(dplyr::n() >= 3) shapiro.test(GC)$p.value else 0,
+        p.value = if(dplyr::n() >= 3) shapiro.test(GC)$p.value else 0, 
         .groups = "drop"
       )
     
@@ -83,6 +86,8 @@ analyze_GC_content <- function(
       bracket.nudge.y = 2,
       inherit.aes = FALSE
     ) +
+    scale_fill_manual(values = c(group1_col, group2_col)) +
+    scale_color_manual(values = c(group1_col, group2_col)) +
     labs(
       title = "GC Content Comparison",
       subtitle = test_result$method,
