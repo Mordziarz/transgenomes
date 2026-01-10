@@ -22,13 +22,14 @@
 #' @export
 
 transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc, 
-                                            bed_mt, bed_pt, bed_nuc,
-                                            evalue_cut_off = 1e-06, 
-                                            min_length = 100,
-                                            min_identity = 70,
-                                            gene_buffer = 20, 
-                                            trans_buffer = 20) {
+                                      bed_mt, bed_pt, bed_nuc,
+                                      evalue_cut_off = 1e-06, 
+                                      min_length = 100,
+                                      min_identity = 70,
+                                      gene_buffer = 20, 
+                                      trans_buffer = 20) {
   
+
   load_bed <- function(bed_input) {
     df <- if (is.character(bed_input)) read.table(bed_input, header = FALSE, stringsAsFactors = FALSE) else as.data.frame(bed_input)
     df[[1]] <- tolower(as.character(df[[1]]))
@@ -45,13 +46,14 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   
   run_single_transfer <- function(q_fasta, s_fasta, q_bed, s_bed, q_label, s_label, 
                                   validation_blast = NULL, validation_label = "3rd genome") {
-    message(sprintf("Running BLASTn: %s vs %s...", q_label, s_label))
+    
+    message(sprintf("Analysing: %s vs %s...", q_label, s_label))
     
     blast_n <- metablastr::blast_nucleotide_to_nucleotide(
       query = q_fasta, subject = s_fasta, db.import = FALSE, task = "blastn", evalue = evalue_cut_off
     )
     
-    if (nrow(blast_n) == 0) return(NULL)
+    if (is.null(blast_n) || nrow(blast_n) == 0) return(NULL)
     
     blast_n$alig_length <- as.numeric(blast_n$alig_length)
     blast_n$perc_identity <- as.numeric(blast_n$perc_identity)
@@ -76,8 +78,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         hit <- df[i, ]
         overlaps <- bed[bed$chrom == hit[[chrom_col]] & bed$start < hit[[b_end_col]] & bed$end > hit[[b_start_col]], ]
         
-        if (nrow(overlaps) == 0) return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, 
-                                            only_trna = FALSE, only_rrna = FALSE, only_rna = FALSE))
+        if (nrow(overlaps) == 0) return(list(text = NA, sum_g_perc = 0, sum_t_perc = 0, only_trna = FALSE, only_rrna = FALSE, only_rna = FALSE))
         
         is_trna <- grepl(trna_regex, overlaps$name, ignore.case = TRUE)
         is_rrna <- grepl(rrna_regex, overlaps$name, ignore.case = TRUE)
@@ -100,8 +101,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
           paste0(x$name, " (g_len=", x$g_len, ", ov_len=", round(x$ov_len, 0), ", g_perc=", round(x$g_perc, 1), "%, t_perc=", round(x$t_perc, 1), "%)")
         })
         
-        return(list(text = paste(res_text, collapse = "; "), 
-                    sum_g_perc = sum_g_perc, sum_t_perc = sum_t_perc, 
+        return(list(text = paste(res_text, collapse = "; "), sum_g_perc = sum_g_perc, sum_t_perc = sum_t_perc, 
                     only_trna = all(is_trna), only_rrna = all(is_rrna), only_rna = all(is_any_rna)))
       })
     }
@@ -111,6 +111,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
     
     blast_n[[paste0(tolower(q_label), "_genes")]] <- sapply(q_ann, function(x) x$text)
     blast_n[[paste0(tolower(s_label), "_genes")]] <- sapply(s_ann, function(x) x$text)
+    
     blast_n$direction <- "Undefined"
     
     for (i in 1:nrow(blast_n)) {
@@ -126,24 +127,19 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
       m <- q_ann[[i]]; p <- s_ann[[i]]
       
       if (m$only_rna && p$only_rna) {
-        if (m$only_trna && p$only_trna) {
-          blast_n$direction[i] <- "Undefined (tRNA only)"
-        } else if (m$only_rrna && p$only_rrna) {
-          blast_n$direction[i] <- "Undefined (rRNA only)"
-        } else {
-          blast_n$direction[i] <- "Undefined (Mixed RNA)"
-        }
+        if (m$only_trna && p$only_trna) blast_n$direction[i] <- "Undefined (tRNA only)"
+        else if (m$only_rrna && p$only_rrna) blast_n$direction[i] <- "Undefined (rRNA only)"
+        else blast_n$direction[i] <- "Undefined (Mixed RNA)"
         next
       }
       
       g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
+      t_diff <- abs(m$sum_t_perc - p$sum_t_perc)
+      
       if (g_diff >= gene_buffer) {
         blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
-      } else {
-        t_diff <- abs(m$sum_t_perc - p$sum_t_perc)
-        if (t_diff >= trans_buffer) {
-          blast_n$direction[i] <- if(m$sum_t_perc > p$sum_t_perc) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
-        }
+      } else if (t_diff >= trans_buffer) {
+        blast_n$direction[i] <- if(m$sum_t_perc > p$sum_t_perc) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
       }
     }
     
@@ -155,21 +151,21 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   raw_mt_nuc <- run_single_transfer(fasta_mt, fasta_nuc, b_mt, b_nuc, "MT", "NUC")
   raw_pt_nuc <- run_single_transfer(fasta_pt, fasta_nuc, b_pt, b_nuc, "PT", "NUC")
   
-  res_mt_pt  <- run_single_transfer(fasta_mt, fasta_pt, b_mt, b_pt, "MT", "PT", 
-                                    validation_blast = raw_mt_nuc, validation_label = "NUC")
-  
-  res_mt_nuc <- run_single_transfer(fasta_mt, fasta_nuc, b_mt, b_nuc, "MT", "NUC", 
-                                    validation_blast = raw_mt_pt, validation_label = "PT")
-  
-  res_pt_nuc <- run_single_transfer(fasta_pt, fasta_nuc, b_pt, b_nuc, "PT", "NUC", 
-                                    validation_blast = raw_mt_pt, validation_label = "MT")
+  res_mt_pt  <- run_single_transfer(fasta_mt, fasta_pt, b_mt, b_pt, "MT", "PT", raw_mt_nuc, "NUC")
+  res_mt_nuc <- run_single_transfer(fasta_mt, fasta_nuc, b_mt, b_nuc, "MT", "NUC", raw_mt_pt, "PT")
+  res_pt_nuc <- run_single_transfer(fasta_pt, fasta_nuc, b_pt, b_nuc, "PT", "NUC", raw_mt_pt, "MT")
   
   final_res <- data.frame()
   combined  <- list(res_mt_pt, res_mt_nuc, res_pt_nuc)
+  
   for (res in combined) {
     if (!is.null(res)) {
-      if (nrow(final_res) == 0) final_res <- res else final_res <- merge(final_res, res, all = TRUE)
+      for(col in c("mt_genes", "pt_genes", "nuc_genes")) {
+        if(!(col %in% names(res))) res[[col]] <- NA
+      }
+      if (nrow(final_res) == 0) final_res <- res else final_res <- rbind(final_res, res)
     }
   }
+  
   return(as.data.frame(final_res))
 }
