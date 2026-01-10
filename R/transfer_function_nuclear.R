@@ -120,90 +120,59 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
       
       if (!is.null(nuc_validation_blast)) {
         tryCatch({
-          relevant_nuc_query <- NULL
-          relevant_nuc_subject <- NULL
+          nuc_hits <- NULL
           
-          if ((q_label == "MT" && s_label == "NUC") || (q_label == "PT" && s_label == "NUC")) {
-            relevant_nuc_query <- nuc_validation_blast[
-              nuc_validation_blast$query_id == blast_n$query_id[i], ]
-            relevant_nuc_subject <- nuc_validation_blast[
-              nuc_validation_blast$subject_id == blast_n$subject_id[i], ]
+          if (q_label == "MT" && s_label == "NUC") {
+            nuc_hits <- nuc_validation_blast[
+              nuc_validation_blast$subject_id == blast_n$subject_id[i] &
+                pmin(nuc_validation_blast$s_start, nuc_validation_blast$s_end) < blast_n$s_end_fix[i] &
+                pmax(nuc_validation_blast$s_start, nuc_validation_blast$s_end) > blast_n$s_start_fix[i], ]
+          } else if (q_label == "PT" && s_label == "NUC") {
+            nuc_hits <- nuc_validation_blast[
+              nuc_validation_blast$subject_id == blast_n$subject_id[i] &
+                pmin(nuc_validation_blast$s_start, nuc_validation_blast$s_end) < blast_n$s_end_fix[i] &
+                pmax(nuc_validation_blast$s_start, nuc_validation_blast$s_end) > blast_n$s_start_fix[i], ]
           } else if (q_label == "MT" && s_label == "PT") {
-            relevant_nuc_query <- nuc_validation_blast[
-              nuc_validation_blast$query_id == blast_n$query_id[i], ]
-            relevant_nuc_subject <- nuc_validation_blast[
-              nuc_validation_blast$query_id == blast_n$subject_id[i], ]
-          }
-          
-          if (!is.null(relevant_nuc_query) && !is.null(relevant_nuc_subject) &&
-              nrow(relevant_nuc_query) > 0 && nrow(relevant_nuc_subject) > 0) {
-            blast_n$nuclear_paralog_flag[i] <- "BOTH_ENDPOINTS_NUCLEAR"
-            blast_n$direction[i] <- "Undefined (Both endpoints in nuclear)"
-            next
-          }
-          
-          if (!is.null(relevant_nuc_query) && nrow(relevant_nuc_query) > 0) {
-            nuc_q_start <- pmin(as.numeric(relevant_nuc_query$q_start), as.numeric(relevant_nuc_query$q_end))
-            nuc_q_end   <- pmax(as.numeric(relevant_nuc_query$q_start), as.numeric(relevant_nuc_query$q_end))
-            nuc_cross <- relevant_nuc_query[
-              nuc_q_start < blast_n$q_end_fix[i] & nuc_q_end > blast_n$q_start_fix[i], ]
-            
-            if (nrow(nuc_cross) > 0) {
-              best_nuc_idx <- which.max(as.numeric(nuc_cross$bit_score))
-              best_nuc <- nuc_cross[best_nuc_idx, ]
-              current_bit_score <- as.numeric(blast_n$bit_score[i])
-              current_alig_length <- as.numeric(blast_n$alig_length[i])
-              nuc_bit_score <- as.numeric(best_nuc$bit_score)
-              nuc_alig_length <- as.numeric(best_nuc$alig_length)
-              
-              if (!is.na(nuc_bit_score) && !is.na(current_bit_score) && 
-                  !is.na(nuc_alig_length) && !is.na(current_alig_length) &&
-                  current_alig_length > 0 && nuc_alig_length > 0) {
-                nuc_density <- nuc_bit_score / nuc_alig_length
-                cur_density <- current_bit_score / current_alig_length
-                density_ratio <- nuc_density / cur_density
-                if (nuc_density >= (nuclear_min_bit_score / 1000) && 
-                    density_ratio >= nuclear_ratio_threshold) {
-                  blast_n$nuclear_paralog_flag[i] <- paste0(
-                    "QUERY_NUCLEAR_RISK [NUC_dens=", round(nuc_density, 2),
-                    " vs ", tolower(s_label), "_dens=", round(cur_density, 2),
-                    " ratio=", round(density_ratio, 2), "]")
-                  blast_n$direction[i] <- "Undefined (Query nuclear paralog)"
-                  next
-                }
-              }
+            nuc_query_hits <- nuc_validation_blast[
+              nuc_validation_blast$subject_id == blast_n$query_id[i] &
+                pmin(nuc_validation_blast$s_start, nuc_validation_blast$s_end) < blast_n$q_end_fix[i] &
+                pmax(nuc_validation_blast$s_start, nuc_validation_blast$s_end) > blast_n$q_start_fix[i], ]
+            nuc_subject_hits <- nuc_validation_blast[
+              nuc_validation_blast$subject_id == blast_n$subject_id[i] &
+                pmin(nuc_validation_blast$s_start, nuc_validation_blast$s_end) < blast_n$s_end_fix[i] &
+                pmax(nuc_validation_blast$s_start, nuc_validation_blast$s_end) > blast_n$s_start_fix[i], ]
+            if (nrow(nuc_query_hits) > 0 && nrow(nuc_subject_hits) > 0) {
+              blast_n$nuclear_paralog_flag[i] <- "BOTH_ENDPOINTS_NUCLEAR"
+              blast_n$direction[i] <- "Undefined (Both endpoints in nuclear)"
+              next
             }
+            nuc_hits <- if (nrow(nuc_query_hits) > 0) nuc_query_hits else nuc_subject_hits
           }
           
-          if (!is.null(relevant_nuc_subject) && nrow(relevant_nuc_subject) > 0 && is.na(blast_n$nuclear_paralog_flag[i])) {
-            nuc_q_start <- pmin(as.numeric(relevant_nuc_subject$q_start), as.numeric(relevant_nuc_subject$q_end))
-            nuc_q_end   <- pmax(as.numeric(relevant_nuc_subject$q_start), as.numeric(relevant_nuc_subject$q_end))
-            nuc_cross <- relevant_nuc_subject[
-              nuc_q_start < blast_n$s_end_fix[i] & nuc_q_end > blast_n$s_start_fix[i], ]
+          if (!is.null(nuc_hits) && nrow(nuc_hits) > 0) {
+            best_nuc_idx <- which.max(as.numeric(nuc_hits$bit_score))
+            best_nuc <- nuc_hits[best_nuc_idx, ]
+            current_bit_score <- as.numeric(blast_n$bit_score[i])
+            current_alig_length <- as.numeric(blast_n$alig_length[i])
+            nuc_bit_score <- as.numeric(best_nuc$bit_score)
+            nuc_alig_length <- as.numeric(best_nuc$alig_length)
             
-            if (nrow(nuc_cross) > 0) {
-              best_nuc_idx <- which.max(as.numeric(nuc_cross$bit_score))
-              best_nuc <- nuc_cross[best_nuc_idx, ]
-              current_bit_score <- as.numeric(blast_n$bit_score[i])
-              current_alig_length <- as.numeric(blast_n$alig_length[i])
-              nuc_bit_score <- as.numeric(best_nuc$bit_score)
-              nuc_alig_length <- as.numeric(best_nuc$alig_length)
+            if (!is.na(nuc_bit_score) && !is.na(current_bit_score) && 
+                !is.na(nuc_alig_length) && !is.na(current_alig_length) &&
+                current_alig_length > 0 && nuc_alig_length > 0) {
+              nuc_density <- nuc_bit_score / nuc_alig_length
+              cur_density <- current_bit_score / current_alig_length
+              density_ratio <- nuc_density / cur_density
               
-              if (!is.na(nuc_bit_score) && !is.na(current_bit_score) && 
-                  !is.na(nuc_alig_length) && !is.na(current_alig_length) &&
-                  current_alig_length > 0 && nuc_alig_length > 0) {
-                nuc_density <- nuc_bit_score / nuc_alig_length
-                cur_density <- current_bit_score / current_alig_length
-                density_ratio <- nuc_density / cur_density
-                if (nuc_density >= (nuclear_min_bit_score / 1000) && 
-                    density_ratio >= nuclear_ratio_threshold) {
-                  blast_n$nuclear_paralog_flag[i] <- paste0(
-                    "SUBJECT_NUCLEAR_RISK [NUC_dens=", round(nuc_density, 2),
-                    " vs ", tolower(q_label), "_dens=", round(cur_density, 2),
-                    " ratio=", round(density_ratio, 2), "]")
-                  blast_n$direction[i] <- "Undefined (Subject nuclear paralog)"
-                  next
-                }
+              if (nuc_density >= (nuclear_min_bit_score / 1000) && 
+                  density_ratio >= nuclear_ratio_threshold) {
+                side <- if (q_label == "MT" && s_label == "NUC") "QUERY" else "SUBJECT"
+                blast_n$nuclear_paralog_flag[i] <- paste0(
+                  side, "_NUCLEAR_RISK [NUC_dens=", round(nuc_density, 2),
+                  " vs ", tolower(ifelse(side=="QUERY", s_label, q_label)), "_dens=", round(cur_density, 2),
+                  " ratio=", round(density_ratio, 2), "]")
+                blast_n$direction[i] <- paste0("Undefined (", side, " nuclear paralog)")
+                next
               }
             }
           }
@@ -225,7 +194,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
             best_c_score <- as.numeric(best_c$bit_score)
             if (!is.na(best_c_score) && best_c_score > blast_n$bit_score[i]) {
               blast_n$direction[i] <- paste0("Excluded: Stronger match in ", validation_label)
-              blast_n$excluded_coords[i] <- paste0(validation_label, " [", best_c$s_start, "-", 
+              blast_n$excluded_coords[i] <- paste0(validation_label, " [", best_c$s_start, "-",
                                                     best_c$s_end, "] score=", round(best_c_score, 1))
               next
             }
@@ -314,6 +283,5 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   
   return(final_df[, order_cols])
 }
-
 
 
