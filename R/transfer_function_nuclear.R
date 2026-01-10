@@ -170,6 +170,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         next
       }
       
+      
       if (m$only_rna && !p$only_rna) {
         blast_n$direction[i] <- paste(s_label, "->", q_label)
         next
@@ -193,17 +194,9 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
       t_diff <- abs(m$sum_t_perc - p$sum_t_perc)
       
       if (g_diff >= gene_buffer) {
-        blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) {
-          paste(q_label, "->", s_label)
-        } else {
-          paste(s_label, "->", q_label)
-        }
+        blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
       } else if (t_diff >= trans_buffer) {
-        blast_n$direction[i] <- if(m$sum_t_perc > p$sum_t_perc) {
-          paste(q_label, "->", s_label)
-        } else {
-          paste(s_label, "->", q_label)
-        }
+        blast_n$direction[i] <- if(m$sum_t_perc > p$sum_t_perc) paste(q_label, "->", s_label) else paste(s_label, "->", q_label)
       }
     }
     
@@ -259,12 +252,10 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   )
   
   for(col in desired_order) {
-    if(!(col %in% names(final_res))) {
-      final_res[[col]] <- NA
-    }
+    if(!(col %in% names(final_res))) final_res[[col]] <- NA
   }
   
   final_res <- final_res[, desired_order]
-  
   return(as.data.frame(final_res))
 }
+
