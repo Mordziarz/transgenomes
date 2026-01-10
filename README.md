@@ -50,15 +50,49 @@ transfer_function_out <- transfer_function(fasta_mt = "fasta_q.fasta",
                                             trans_buffer = 20)
 ```
 
-The transfer_function() identifies intergenomic transfers by comparing BLASTn alignments against Mitochondrial (MT) and Plastid (PT) feature sets. For each alignment, the function calculates cumulative gene completeness (sum_g_perc) and transfer dominance (sum_t_perc) for both genomes. These metrics are recorded in the mt_genes and pt_genes columns, providing detailed information for each overlapping feature (e.g., atp1 (g_len=1530, ov_len=790, g_perc=51.6%, t_perc=98.5%)).
+| Column | Description |
+|:---|:---|
+| `query_id` | Identifier of the Mitochondrial sequence (MT). |
+| `subject_id` | Identifier of the Plastid sequence (PT). |
+| `perc_identity` | Percentage of identical matches. |
+| `num_ident_matches` | Number of identical nucleotides in the alignment. |
+| `alig_length` | Total length of the alignment (including gaps). |
+| `mismatches` | Number of mismatched nucleotides. |
+| `gap_openings` | Number of gap opening events. |
+| `n_gaps` | Total number of gaps (nucleotides). |
+| `pos_match` | Number of positive matches. |
+| `ppos` | Percentage of positive matches. |
+| `q_start` / `q_end` | Start and end positions on the MT sequence. |
+| `q_len` | Total length of the MT sequence. |
+| `qcov` | Query coverage per unique subject. |
+| `qcovhsp` | Query coverage per High-scoring Segment Pair (HSP). |
+| `s_start` / `s_end` | Start and end positions on the PT sequence. |
+| `s_len` | Total length of the PT sequence. |
+| `evalue` | Expectation value (statistical significance). |
+| `bit_score` | Bit score (normalized quality of alignment). |
+| `score_raw` | Raw alignment score. |
+| **`mt_genes`** | List of genes found in the MT genome at the alignment site. |
+| **`pt_genes`** | List of genes found in the PT genome at the alignment site. |
+| **`direction`** | Inferred transfer direction: `MT -> PT`, `PT -> MT`, or `Unidentified`. |
 
-Crucially, the algorithm ignores tRNA genes (filtered via regex ^trn|tRNA) when determining direction, as these highly conserved sequences are often non-diagnostic for specific transfer events. The final direction—stored in the direction column as MT -> PT, PT -> MT, or unknown—is determined by a two-step comparison of the cumulative metrics:
+Each gene in `mt_genes` and `pt_genes` is described using the following syntax:  
+`GeneName (g_len=X, ov_len=Y, g_perc=Z%, t_perc=W%)`
 
-    1. Gene Completeness: A transfer is assigned if the difference between the MT and PT cumulative gene completeness exceeds the gene_buffer.
+* **`g_len`**: Total length of the gene in the reference BED file.
+* **`ov_len`**: Number of nucleotides from that gene overlapping with the alignment.
+* **`g_perc`**: Percentage of the gene sequence covered by the transfer ($(\frac{ov\_len}{g\_len}) \times 100$).
+* **`t_perc`**: Percentage of the total alignment length occupied by this gene ($(\frac{ov\_len}{alig\_length}) \times 100$).
 
-    2. Transfer Dominance: If the gene completeness is ambiguous, the direction is determined if the difference in dominance (the proportion of the     alignment covered by any genes) exceeds the trans_buffer.
+The function determines the `direction` of DNA transfer based on the following improved logic:
 
-All decisions, including cases where regions are strictly intergenic or where differences remain below the specified buffers, result in an "unknown" classification to ensure high-confidence results.
+1.  **Protein-Coding Priority**: If an alignment overlaps with a protein-coding gene, any overlapping **tRNA** or **rRNA** (detected via regex) are excluded from the statistical decision to avoid noise from short, conserved sequences.
+2.  **Overlap Correction**: If multiple genes overlap in the same region, the function merges their coordinates to calculate a **non-redundant nucleotide footprint**. This ensures that `g_perc` and `t_perc` represent real DNA coverage and never exceed 100%.
+3.  **Direction Assignment**:
+    * **MT -> PT**: Evidence shows the fragment is a gene in MT but is potentially non-functional or a fragment in PT.
+    * **PT -> MT**: Evidence shows the fragment originates from the PT genome (typical for NUPTs/MTPTs).
+    * **Unidentified**: Assigned if both sides only contain tRNA/rRNA, if no genes are present on either side, or if the difference in coverage is below the `gene_buffer` / `trans_buffer` thresholds.
+4.  **Transfer Guarantee**: If only one side of the alignment contains a protein-coding gene (and the other side contains only tRNA/rRNA or no genes), the function automatically assigns the direction to that side rather than marking it as unidentified.
+
 
 # Visualization
 
@@ -105,81 +139,6 @@ results_GC$gc_data
 ```
 
 ![GC](inst/graphs/Ex_GC_main.png)
-
-# Nuclear genome
-
-I have enabled users to analyze DNA transfers between the chloroplast, mitochondrion, and nuclear genomes.
-
-The transfer_function_nuclear identifies DNA sequence transfers by performing a three-way genomic comparison between mitochondrial (MT), plastid (PT), and nuclear (NUC) genomes. Using BLASTn as the alignment engine, the function filters hits based on user-defined thresholds for E-value, alignment length, and percent identity to eliminate non-specific sequence noise and incidental similarities.
-
-The core analytical strength lies in its multi-gene annotation engine: for every BLAST hit, the function identifies all overlapping genomic features from provided BED files. Instead of evaluating single genes in isolation, it aggregates (sums) coverage metrics across all features within the alignment boundaries. The direction of transfer (e.g., MT -> NUC) is determined by comparing the total gene completeness and alignment dominance between the query and subject sequences. If the cumulative gene coverage in one genome exceeds the other (controlled by the gene_buffer and trans_buffer parameters), a transfer direction is assigned. This approach is particularly robust for detecting large-scale transfers involving genomic clusters, while a specialized tRNA filter prevents highly conserved, non-diagnostic regions from biasing the results.
-
-```r
-transfer_function_nuclear_out <- transfer_function_nuclear(fasta_nuc = "path/to/nuclear/fasta",
-                                         fasta_mt ="path/to/mitochondrion/fasta" ,
-                                         fasta_pt = "path/to/plastid/fasta",
-                                         bed_nuc = bed_nuc,
-                                         bed_mt = bed_mt,
-                                         bed_pt = bed_pt,
-                                         min_length = 100,
-                                         evalue_cut_off = 0.000001,
-                                         min_identity = 70,
-                                         gene_buffer = 20,
-                                         trans_buffer = 20)
-```
-
-## Output Column Definitions
-
-| Column Name | Description |
-| :--- | :--- |
-| **query_id** | The identifier of the query sequence (e.g., Mitochondrial or Plastid scaffold). |
-| **subject_id** | The identifier of the reference sequence (e.g., Nuclear chromosome). |
-| **perc_identity** | Percentage of identical matches between the two sequences. |
-| **num_ident_matches** | Total number of identical nucleotides in the alignment. |
-| **alig_length** | Total length of the alignment (including gaps). |
-| **mismatches** | Number of mismatched nucleotides. |
-| **gap_openings** | Number of times a gap was opened in the alignment. |
-| **n_gaps** | Total number of gap characters (insertions/deletions). |
-| **pos_match** | Number of positive matches (identical residues for DNA). |
-| **ppos** | Percentage of positive-scoring matches. |
-| **q_start / q_end** | Start and end coordinates of the alignment on the **query** sequence. |
-| **q_len** | Total length of the query sequence. |
-| **qcov / qcovhsp** | Query coverage per hit and per high-scoring segment pair. |
-| **s_start / s_end** | Start and end coordinates of the alignment on the **subject** sequence. |
-| **s_len** | Total length of the subject sequence. |
-| **evalue** | The Expect value (significance of the hit; lower is better). |
-| **bit_score** | Statistical measure of the alignment quality (independent of database size). |
-| **direction** | **Predicted transfer direction** (e.g., `PT -> NUC`). Based on gene completeness and alignment dominance. |
-| **pt_genes** | Plastid genes overlapping the hit with detailed metrics. |
-| **mt_genes** | Mitochondrial genes overlapping the hit with detailed metrics. |
-| **nuc_genes** | Nuclear genes/features overlapping the hit with detailed metrics. |
-
-### Annotation Metrics Detail
-
-For each gene identified in the columns above, the following metrics are provided:
-- **g_len**: Total length of the gene in the reference BED file.
-- **ov_len**: Number of base pairs of the gene covered by the alignment.
-- **g_perc (Gene Completeness)**: Percentage of the total gene length present in this transfer.
-- **t_perc (Transfer Dominance)**: Percentage of this specific BLAST hit occupied by this gene.
-
-## GC content NUC-PT-MT
-
-```r
-results_GC <- analyze_GC_three_genomes(extract_regions_mt = regions_mt,
-                                       extract_regions_pt = regions_pt,
-                                       extract_regions_nuc= regions_nuc)
-
-
-results_GC$main_test
-results_GC$post_hoc
-results_GC$normality
-results_GC$variance
-results_GC$gc_data
-results_GC$plot
-results_GC$method
-```
-
-![GC_3genomes](inst/graphs/Ex_GC_3_genomes.png)
 
 # Citation
 

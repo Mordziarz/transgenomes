@@ -36,7 +36,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   b_mt  <- load_bed_local(bed_mt)
   b_pt  <- load_bed_local(bed_pt)
   
-  # Updated regex to include rRNA and specific patterns
   trna_regex <- "^trn|tRNA"
   rrna_regex <- "^rrn|rRNA|[0-9]+S_rRNA"
   combined_non_coding_regex <- paste0(trna_regex, "|", rrna_regex)
@@ -67,7 +66,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   blast_n$s_start_fix <- pmin(as.numeric(blast_n$s_start), as.numeric(blast_n$s_end))
   blast_n$s_end_fix   <- pmax(as.numeric(blast_n$s_start), as.numeric(blast_n$s_end))
 
-  # Function to merge overlapping intervals to get real DNA coverage
   merge_intervals <- function(starts, ends) {
     if (length(starts) == 0) return(0)
     ord <- order(starts)
@@ -103,27 +101,21 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
         return(list(text = "none", sum_g_perc = 0, sum_t_perc = 0, only_nc = FALSE, has_protein = FALSE))
       }
       
-      # Check for tRNA and rRNA
       is_nc <- grepl(combined_non_coding_regex, overlaps$name, ignore.case = TRUE)
       only_nc <- all(is_nc)
       has_protein <- any(!is_nc)
       
-      # Logic: Only use protein-coding genes for statistics if they exist
       stats_overlaps <- if(has_protein) overlaps[!is_nc, ] else overlaps
       
-      # Overlap calculation with merged intervals to avoid > 100%
-      # 1. Calculate unique nucleotides of genes covered by alignment
       rel_ov_starts <- pmax(stats_overlaps$start, hit[[b_start_col]])
       rel_ov_ends <- pmin(stats_overlaps$end, hit[[b_end_col]])
       unique_ov_len <- merge_intervals(rel_ov_starts, rel_ov_ends)
       
-      # 2. Total unique length of the involved genes themselves
       unique_gene_len <- merge_intervals(stats_overlaps$start, stats_overlaps$end)
       
       sum_g_perc <- (unique_ov_len / unique_gene_len) * 100
       sum_t_perc <- (unique_ov_len / hit$alig_length) * 100
       
-      # Keep the individual gene descriptions as requested
       gene_results <- list()
       for(j in 1:nrow(overlaps)) {
         g_len  <- overlaps$end[j] - overlaps$start[j]
@@ -160,9 +152,7 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   for (i in 1:nrow(blast_n)) {
     m <- mt_ann[[i]]; p <- pt_ann[[i]]
     
-    # If both sides are only tRNA/rRNA or no genes, it's Unidentified
     if ((m$only_nc && p$only_nc) || (!m$has_protein && !p$has_protein)) {
-      # Except if only one side has a protein-coding gene, then it MUST be a transfer
       if (m$has_protein && !p$has_protein) {
         blast_n$direction[i] <- "MT -> PT"
       } else if (!m$has_protein && p$has_protein) {
@@ -173,7 +163,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
       next
     }
     
-    # Statistical determination based on normalized (merged) gene percentages
     g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
     if (g_diff >= gene_buffer) {
       blast_n$direction[i] <- if(m$sum_g_perc > p$sum_g_perc) "MT -> PT" else "PT -> MT"
