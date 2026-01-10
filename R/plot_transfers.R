@@ -1,12 +1,11 @@
 #' Circular Visualization of Genomic Transfers (MT-PT)
 #'
 #' Generates a high-quality Circos plot visualizing genomic alignments and transfer directions
-#' between mitochondrial (MT) and plastid (PT) genomes. The plot includes colored genome 
-#' sectors, direction-specific links, and dual legends.
+#' between mitochondrial (MT) and plastid (PT) genomes.
 #'
 #' @param transfer_function_out Data frame containing alignment data. Must include 
-#' columns: `query_id`, `subject_id`, `q_start`, `q_end`, `s_start`, `s_end`, `q_len`, 
-#' `s_len`, and `direction`.
+#' columns: `mt_id`, `pt_id`, `mt_start`, `mt_end`, `pt_start`, `pt_end`, `mt_total_len`, 
+#' `pt_total_len`, and `direction`.
 #' 
 #' @param gap Numeric. Distance between genome segments in degrees. Default is 10.
 #' @param start_degree Numeric. Starting rotation of the plot (0-360). Default is 90.
@@ -17,20 +16,7 @@
 #' @param pt_sector_col Character. Color for the plastid genome segments. Default is "darkgreen".
 #' @param mt_to_pt_col Character. Color for ribbons representing MT to PT transfers. Default is "firebrick1".
 #' @param pt_to_mt_col Character. Color for ribbons representing PT to MT transfers. Default is "dodgerblue1".
-#' @param unknown_col Character. Color for ribbons where direction is unknown. Default is "grey80".
-#'
-#' @details 
-#' The function uses the `circlize` package to initialize the circular layout. It automatically
-#' identifies unique sequences for both genomes and assigns colors based on the `direction` 
-#' column. Labels are curved to follow the track's arc using `bending.inside` facing.
-#'
-#' @return Invisible NULL. The function generates a plot in the active graphics device.
-#' 
-#' @importFrom circlize circos.clear circos.par circos.initialize circos.track circos.rect circos.text circos.axis circos.genomicLink CELL_META
-#' @importFrom grDevices col2rgb rgb
-#' @importFrom graphics legend
-#' @export
-#' 
+#' @param undefined_col Character. Color for ribbons where direction is Unidentified. Default is "grey80".
 
 plot_transfers <- function(transfer_function_out, 
                            gap = 10, 
@@ -60,12 +46,13 @@ plot_transfers <- function(transfer_function_out,
   link_colors <- ifelse(transfer_function_out$direction == "MT -> PT", col_mt_pt,
                         ifelse(transfer_function_out$direction == "PT -> MT", col_pt_mt, col_undef))
   
-  mt_ids <- unique(transfer_function_out$query_id)
-  pt_ids <- unique(transfer_function_out$subject_id)
+  mt_ids <- unique(transfer_function_out$mt_id)
+  pt_ids <- unique(transfer_function_out$pt_id)
   
-  mt_chroms <- unique(transfer_function_out[, c("query_id", "q_len")])
+  mt_chroms <- unique(transfer_function_out[, c("mt_id", "mt_total_len")])
   colnames(mt_chroms) <- c("id", "len")
-  pt_chroms <- unique(transfer_function_out[, c("subject_id", "s_len")])
+  
+  pt_chroms <- unique(transfer_function_out[, c("pt_id", "pt_total_len")])
   colnames(pt_chroms) <- c("id", "len")
   
   full_genome_info <- rbind(mt_chroms, pt_chroms)
@@ -109,21 +96,21 @@ plot_transfers <- function(transfer_function_out,
     
   }, bg.border = NA, track.height = 0.1)
   
-  links_q_fix <- data.frame(
-    chr = transfer_function_out$query_id,
-    start = pmin(as.numeric(transfer_function_out$q_start), as.numeric(transfer_function_out$q_end)),
-    end = pmax(as.numeric(transfer_function_out$q_start), as.numeric(transfer_function_out$q_end))
+  links_mt <- data.frame(
+    chr = transfer_function_out$mt_id,
+    start = pmin(as.numeric(transfer_function_out$mt_start), as.numeric(transfer_function_out$mt_end)),
+    end = pmax(as.numeric(transfer_function_out$mt_start), as.numeric(transfer_function_out$mt_end))
   )
-  links_s_fix <- data.frame(
-    chr = transfer_function_out$subject_id,
-    start = pmin(as.numeric(transfer_function_out$s_start), as.numeric(transfer_function_out$s_end)),
-    end = pmax(as.numeric(transfer_function_out$s_start), as.numeric(transfer_function_out$s_end))
+  links_pt <- data.frame(
+    chr = transfer_function_out$pt_id,
+    start = pmin(as.numeric(transfer_function_out$pt_start), as.numeric(transfer_function_out$pt_end)),
+    end = pmax(as.numeric(transfer_function_out$pt_start), as.numeric(transfer_function_out$pt_end))
   )
   
-  circlize::circos.genomicLink(links_q_fix, links_s_fix, col = link_colors, border = NA)
+  circlize::circos.genomicLink(links_mt, links_pt, col = link_colors, border = NA)
   
   graphics::legend(x = -1.3, y = -0.7, 
-                   legend = c("MT -> PT", "PT -> MT", "Undefined"), 
+                   legend = c("MT -> PT", "PT -> MT", "Unidentified"), 
                    fill = c(mt_to_pt_col, pt_to_mt_col, undefined_col), 
                    title = expression(bold("Transfer Direction")), bty = "n", cex = 0.7)
   
@@ -132,5 +119,5 @@ plot_transfers <- function(transfer_function_out,
                    fill = c(mt_sector_col, pt_sector_col), 
                    title = expression(bold("Genomes")), bty = "n", cex = 0.7)
   
-  message("Plot created with maximized circle and side-by-side legends.")
+  message("DONE !!!!! :)")
 }
