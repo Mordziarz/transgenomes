@@ -27,7 +27,8 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
                                       min_length = 100,
                                       min_identity = 70,
                                       gene_buffer = 20, 
-                                      trans_buffer = 20) {
+                                      trans_buffer = 20,
+                                      nuclear_bit_score_threshold = 0.85) {  # NOWY PARAMETR
   
   load_bed <- function(bed_input) {
     df <- if (is.character(bed_input)) read.table(bed_input, header = FALSE, stringsAsFactors = FALSE) else as.data.frame(bed_input)
@@ -44,7 +45,8 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   
   run_single_transfer <- function(q_fasta, s_fasta, q_bed, s_bed, q_label, s_label, 
                                   validation_blast = NULL, validation_label = "3rd genome",
-                                  q_label_short = NULL, s_label_short = NULL) {
+                                  q_label_short = NULL, s_label_short = NULL,
+                                  nuc_validation_blast = NULL) {  # NOWY PARAMETR
     
     if (is.null(q_label_short)) q_label_short <- q_label
     if (is.null(s_label_short)) s_label_short <- s_label
@@ -85,7 +87,9 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
             has_genes  = FALSE,
             only_rna   = FALSE,
             only_trna  = FALSE,
-            only_rrna  = FALSE
+            only_rrna  = FALSE,
+            nuclear_paralog_risk = FALSE,
+            nuclear_paralog_detail = NA
           ))
         }
         
@@ -130,7 +134,9 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
           has_genes  = TRUE,
           only_rna   = only_rna_all,
           only_trna  = only_trna,
-          only_rrna  = only_rrna
+          only_rrna  = only_rrna,
+          nuclear_paralog_risk = FALSE,
+          nuclear_paralog_detail = NA
         ))
       })
     }
@@ -143,10 +149,35 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
     
     blast_n$direction <- "Undefined"
     blast_n$excluded_coords <- NA_character_
+    blast_n$nuclear_paralog_flag <- NA_character_  
     
     for (i in 1:nrow(blast_n)) {
       m <- q_ann[[i]]
       p <- s_ann[[i]]
+      
+      nuc_flag <- NA_character_
+      
+      if (!is.null(nuc_validation_blast)) {
+        nuc_cross <- nuc_validation_blast[
+          nuc_validation_blast$query_id == blast_n$query_id[i] & 
+            abs(as.numeric(nuc_validation_blast$q_start) - blast_n$q_start[i]) < 50, ]
+        
+        if (nrow(nuc_cross) > 0) {
+          best_nuc <- nuc_cross[which.max(as.numeric(nuc_cross$bit_score)), ]
+          current_bit_score <- blast_n$bit_score[i]
+          nuc_bit_score <- as.numeric(best_nuc$bit_score)
+          ratio <- nuc_bit_score / current_bit_score
+          
+          if (ratio >= nuclear_bit_score_threshold) {
+            nuc_flag <- paste0(
+              "NUCLEAR_PARALOG_RISK [NUC_score=", round(nuc_bit_score, 1),
+              " vs ", tolower(s_label), "_score=", round(current_bit_score, 1),
+              " ratio=", round(ratio, 2), "]"
+            )
+            blast_n$nuclear_paralog_flag[i] <- nuc_flag
+          }
+        }
+      }
       
       if (!is.null(validation_blast)) {
         cross <- validation_blast[
@@ -175,7 +206,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
         blast_n$direction[i] <- "Undefined (RNA vs NA)"
         next
       }
-
+      
       if (m_has_genes && !p_has_genes) {
         blast_n$direction[i] <- paste(q_label, "->", s_label)
         next
@@ -235,15 +266,18 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
   r_mt_nuc <- run_single_transfer(fasta_mt, fasta_nuc, b_mt, b_nuc, "MT", "NUC", q_label_short="mt", s_label_short="nuc")
   r_pt_nuc <- run_single_transfer(fasta_pt, fasta_nuc, b_pt, b_nuc, "PT", "NUC", q_label_short="pt", s_label_short="nuc")
   
-  res_mt_pt  <- run_single_transfer(fasta_mt, fasta_pt, b_mt, b_pt, "MT", "PT",  r_mt_nuc, "NUC", "mt", "pt")
-  res_mt_nuc <- run_single_transfer(fasta_mt, fasta_nuc, b_mt, b_nuc, "MT", "NUC", r_mt_pt,  "PT",  "mt", "nuc")
-  res_pt_nuc <- run_single_transfer(fasta_pt, fasta_nuc, b_pt, b_nuc, "PT", "NUC", r_mt_pt,  "MT",  "pt", "nuc")
+  res_mt_pt  <- run_single_transfer(fasta_mt, fasta_pt, b_mt, b_pt, "MT", "PT", 
+                                    r_mt_nuc, "NUC", "mt", "pt", r_mt_nuc)
+  res_mt_nuc <- run_single_transfer(fasta_mt, fasta_nuc, b_mt, b_nuc, "MT", "NUC", 
+                                    r_mt_pt, "PT", "mt", "nuc", NULL)
+  res_pt_nuc <- run_single_transfer(fasta_pt, fasta_nuc, b_pt, b_nuc, "PT", "NUC", 
+                                    r_mt_pt, "MT", "pt", "nuc", NULL)
   
   combined <- list(res_mt_pt, res_mt_nuc, res_pt_nuc)
   final_df <- data.frame()
   for (res in combined) {
     if (!is.null(res)) {
-      for(col in c("mt_genes", "pt_genes", "nuc_genes", "excluded_coords")) {
+      for(col in c("mt_genes", "pt_genes", "nuc_genes", "excluded_coords", "nuclear_paralog_flag")) {
         if(!(col %in% names(res))) res[[col]] <- NA
       }
       final_df <- rbind(final_df, res)
@@ -255,7 +289,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
     "q_start", "q_end", "s_start", "s_end", 
     "evalue", "bit_score",
     "mt_genes", "pt_genes", "nuc_genes",
-    "direction", "excluded_coords"
+    "direction", "excluded_coords", "nuclear_paralog_flag"
   )
   
   for(c in order_cols) if(!(c %in% names(final_df))) final_df[[c]] <- NA
