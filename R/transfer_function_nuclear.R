@@ -28,8 +28,8 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
                                      min_identity = 70,
                                      gene_buffer = 20, 
                                      trans_buffer = 20,
-                                     nuclear_ratio_threshold = 0.85,
-                                     nuclear_min_bit_score = 100) {
+                                     nuclear_ratio_threshold = 0.75,
+                                     nuclear_min_bit_score = 150) {
   
   if (!is.numeric(nuclear_ratio_threshold) || nuclear_ratio_threshold < 0 || nuclear_ratio_threshold > 1) {
     stop("nuclear_ratio_threshold must be a numeric value between 0 and 1")
@@ -138,15 +138,19 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
             nuc_cross <- relevant_nuc[nuc_q_start < blast_n$q_end_fix[i] & nuc_q_end > blast_n$q_start_fix[i], ]
             
             if (nrow(nuc_cross) > 0) {
-              best_nuc <- nuc_cross[which.max(as.numeric(nuc_cross$bit_score)), ]
-              cur_bs <- as.numeric(blast_n$bit_score[i])
-              nuc_bs <- as.numeric(best_nuc$bit_score)
+              best_nuc_idx <- which.max(as.numeric(nuc_cross$bit_score))
+              best_nuc <- nuc_cross[best_nuc_idx, ]
+              current_bit_score <- as.numeric(blast_n$bit_score[i])
+              nuc_bit_score <- as.numeric(best_nuc$bit_score)
               
-              if (!is.na(nuc_bs) && !is.na(cur_bs) && cur_bs > 0) {
-                ratio <- nuc_bs / cur_bs
-                if (nuc_bs >= nuclear_min_bit_score && ratio >= nuclear_ratio_threshold) {
-                  blast_n$nuclear_paralog_flag[i] <- sprintf("NUCLEAR_PARALOG_RISK [NUC_score=%.1f vs %s_score=%.1f ratio=%.2f]", 
-                                                            nuc_bs, tolower(s_label), cur_bs, ratio)
+              if (!is.na(nuc_bit_score) && !is.na(current_bit_score) && current_bit_score > 0) {
+                ratio <- nuc_bit_score / current_bit_score
+                if (nuc_bit_score >= nuclear_min_bit_score && ratio >= nuclear_ratio_threshold) {
+                  blast_n$nuclear_paralog_flag[i] <- paste0(
+                    "NUCLEAR_PARALOG_RISK [NUC_score=", round(nuc_bit_score, 1),
+                    " vs ", tolower(s_label), "_score=", round(current_bit_score, 1),
+                    " ratio=", round(ratio, 2), "]"
+                  )
                 }
               }
             }
@@ -161,16 +165,23 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
           cross <- validation_blast[validation_blast$query_id == blast_n$query_id[i] & v_q_start < blast_n$q_end_fix[i] & v_q_end > blast_n$q_start_fix[i], ]
           
           if (nrow(cross) > 0) {
-            best_c_score <- max(as.numeric(cross$bit_score))
+            best_c_idx <- which.max(as.numeric(cross$bit_score))
+            best_c <- cross[best_c_idx, ]
+            best_c_score <- as.numeric(best_c$bit_score)
+            
             if (!is.na(best_c_score) && best_c_score > blast_n$bit_score[i]) {
               blast_n$direction[i] <- paste0("Excluded: Stronger match in ", validation_label)
-              blast_n$excluded_coords[i] <- sprintf("%s [%s-%s] score=%.1f", validation_label, cross$s_start[1], cross$s_end[1], best_c_score)
+              blast_n$excluded_coords[i] <- paste0(
+                validation_label, " [", best_c$s_start, "-", best_c$s_end, 
+                "] score=", round(best_c_score, 1)
+              )
               next
             }
           }
         }, error = function(e) warning(sprintf("Cross-validation error at row %d: %s", i, e$message)))
       }
       
+      # Direction Logic
       if ((m$only_rna && !p$has_genes) || (!m$has_genes && p$only_rna)) { blast_n$direction[i] <- "Undefined (RNA vs NA)"; next }
       if (m$has_genes && !p$has_genes) { blast_n$direction[i] <- paste(q_label, "->", s_label); next }
       if (!m$has_genes && p$has_genes) { blast_n$direction[i] <- paste(s_label, "->", q_label); next }
@@ -179,6 +190,7 @@ transfer_function_nuclear <- function(fasta_mt, fasta_pt, fasta_nuc,
       if (m$only_rna && p$only_rna) {
         if (m$only_rrna && p$only_rrna) { blast_n$direction[i] <- "Undefined (rRNA vs rRNA)"; next }
         if (m$only_trna && p$only_trna) { blast_n$direction[i] <- "Undefined (tRNA vs tRNA)"; next }
+        if ((m$only_trna && p$only_rrna) || (m$only_rrna && p$only_trna)) { blast_n$direction[i] <- "Undefined (tRNA vs rRNA)"; next }
         blast_n$direction[i] <- "Undefined (Mixed RNA)"; next
       }
       
