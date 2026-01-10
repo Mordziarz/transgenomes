@@ -21,7 +21,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     stop("All input files are required.")
   }
 
-  # 1. Ładowanie plików BED
   load_bed_local <- function(bed_input) {
     df <- if (is.character(bed_input)) read.table(bed_input, header = FALSE, stringsAsFactors = FALSE) else as.data.frame(bed_input)
     data.frame(
@@ -36,12 +35,10 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   b_mt  <- load_bed_local(bed_mt)
   b_pt  <- load_bed_local(bed_pt)
   
-  # Regexy dla tRNA i rRNA
   trna_regex <- "^trn|tRNA"
   rrna_regex <- "^rrn|rRNA|[0-9]+S_rRNA"
   nc_regex   <- paste0(trna_regex, "|", rrna_regex)
 
-  # 2. Uruchomienie BLASTn
   message("Running BLASTn (MT vs PT)...")
   blast_res <- metablastr::blast_nucleotide_to_nucleotide(
     query = fasta_mt, subject = fasta_pt,
@@ -53,7 +50,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     return(NULL)
   }
 
-  # 3. Zmiana nazw kolumn na czytelne (MT i PT)
   colnames(blast_res)[colnames(blast_res) == "query_id"]   <- "mt_id"
   colnames(blast_res)[colnames(blast_res) == "subject_id"] <- "pt_id"
   colnames(blast_res)[colnames(blast_res) == "q_start"]    <- "mt_start"
@@ -63,20 +59,17 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   colnames(blast_res)[colnames(blast_res) == "s_end"]      <- "pt_end"
   colnames(blast_res)[colnames(blast_res) == "s_len"]      <- "pt_total_len"
 
-  # 4. Filtrowanie i czyszczenie
   blast_res$alig_length <- as.numeric(blast_res$alig_length)
   blast_res$perc_identity <- as.numeric(blast_res$perc_identity)
   blast_res <- blast_res[blast_res$alig_length >= min_length & blast_res$perc_identity >= min_identity, ]
   
   if (nrow(blast_res) == 0) return(NULL)
 
-  # Naprawa współrzędnych (start < end)
   mt_s <- pmin(as.numeric(blast_res$mt_start), as.numeric(blast_res$mt_end))
   mt_e <- pmax(as.numeric(blast_res$mt_start), as.numeric(blast_res$mt_end))
   pt_s <- pmin(as.numeric(blast_res$pt_start), as.numeric(blast_res$pt_end))
   pt_e <- pmax(as.numeric(blast_res$pt_start), as.numeric(blast_res$pt_end))
 
-  # 5. Funkcja do scalania nakładających się regionów
   merge_intervals <- function(starts, ends) {
     if (length(starts) == 0) return(0)
     ord <- order(starts)
@@ -91,7 +84,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     return(total + (m_end - m_start))
   }
 
-  # 6. Adnotacja
   annotate_organelle <- function(df_idx, bed, organelle_starts, organelle_ends, ids) {
     hit_start <- organelle_starts[df_idx]
     hit_end   <- organelle_ends[df_idx]
@@ -107,7 +99,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
     is_nc <- grepl(nc_regex, overlaps$name, ignore.case = TRUE)
     has_protein <- any(!is_nc)
     
-    # Statystyki: tylko białka jeśli są, inaczej nc
     stats_overlaps <- if(has_protein) overlaps[!is_nc, ] else overlaps
     rel_ov_starts  <- pmax(stats_overlaps$start, hit_start)
     rel_ov_ends    <- pmin(stats_overlaps$end, hit_end)
@@ -133,17 +124,14 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
   blast_res$pt_genes <- sapply(pt_ann, function(x) x$text)
   blast_res$direction <- "Unidentified"
 
-  # 7. Logika kierunku
   for (i in 1:nrow(blast_res)) {
     m <- mt_ann[[i]]; p <- pt_ann[[i]]
     
-    # Jeśli obie strony to tylko niekodujące -> Unidentified
     if (m$only_nc && p$only_nc) {
       blast_res$direction[i] <- "Unidentified"
       next
     }
     
-    # Bezwzględne pierwszeństwo białka
     if (m$has_protein && !p$has_protein) {
       blast_res$direction[i] <- "MT -> PT"
       next
@@ -153,7 +141,6 @@ transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt,
       next
     }
     
-    # Jeśli obie strony mają białka -> Statystyki
     if (m$has_protein && p$has_protein) {
       g_diff <- abs(m$sum_g_perc - p$sum_g_perc)
       if (g_diff >= gene_buffer) {
