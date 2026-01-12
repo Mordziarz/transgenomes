@@ -12,7 +12,7 @@
 #' @export
 transfer_function <- function(fasta_mt, fasta_pt, bed_mt, bed_pt, 
                               evalue_cut_off = 1e-06, 
-                              min_length = 100,
+                              min_length = 40,
                               min_identity = 70,
                               gene_buffer = 20, 
                               trans_buffer = 20) {
