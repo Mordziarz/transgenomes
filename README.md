@@ -144,7 +144,7 @@ results_GC$test_method
 results_GC$gc_data
 ```
 
-![GC](inst/graphs/Ex_GC_main.png)
+![GC](inst/graphs/Ex_GC.png)
 
 # Citation
 
