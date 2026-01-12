@@ -100,7 +100,12 @@ The function determines the `direction` of DNA transfer based on the following i
 The program generated a basic visualization using the circlize package (https://github.com/jokergoo/circlize). This visualization was created based on the output from the transfer_function() function.
 
 ```r
-plot_transfers(transfer_function_out = transfer_function_out)
+plot_transfers(transfer_function_out = transfer_function_out,
+               mt_sector_col = "orange",
+               pt_sector_col = "darkgreen",
+               mt_to_pt_col = "firebrick1",
+               pt_to_mt_col = "dodgerblue1",
+               undefined_col = "grey80"))
 ```
 
 Useful functions for image cleaning in R
