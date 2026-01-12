@@ -43,7 +43,7 @@ transfer_function_out <- transfer_function(fasta_mt = "fasta_q.fasta",
                                             fasta_pt = "fasta_s.fasta",
                                             bed_mt = bed_q,
                                             bed_pt = bed_s,
-                                            min_length = 100,
+                                            min_length = 0,
                                             evalue_cut_off = 0.000001,
                                             min_identity = 70,
                                             gene_buffer = 20,
@@ -115,7 +115,7 @@ dev.off()
 circlize::circos.clear()
 ```
 
-![Circular](inst/graphs/Ex_circos_main.png)
+![Circular](inst/graphs/Ex_plot_transfers.png)
 
 # Extract transfer regions
 
@@ -144,7 +144,7 @@ results_GC$test_method
 results_GC$gc_data
 ```
 
-![GC](inst/graphs/Ex_GC.png)
+![GC](inst/graphs/Ex_GC_content.png)
 
 # Citation
 
