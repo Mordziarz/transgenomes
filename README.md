@@ -123,7 +123,7 @@ The extract_regions() function allows you to extract FASTA sequences from transf
 
 ```r
 regions_s <- extract_regions(transfer_function_out = transfer_1,
-                              fasta_path = "inst/extdata/plastome.fasta")
+                              fasta_path = "inst/extdata/plastome_carot.fasta")
 ```
 
 # GC content
