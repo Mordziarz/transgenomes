@@ -105,7 +105,7 @@ plot_transfers(transfer_function_out = transfer_function_out,
                pt_sector_col = "darkgreen",
                mt_to_pt_col = "firebrick1",
                pt_to_mt_col = "dodgerblue1",
-               undefined_col = "grey80"))
+               unidentified_col = "grey80"))
 ```
 
 Useful functions for image cleaning in R
