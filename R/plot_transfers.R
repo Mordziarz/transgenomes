@@ -28,7 +28,7 @@ plot_transfers <- function(transfer_function_out,
                            pt_sector_col = "darkgreen",
                            mt_to_pt_col = "firebrick1",
                            pt_to_mt_col = "dodgerblue1",
-                           undefined_col = "grey80") {
+                           unidentified_col = "grey80") {
   
   if (missing(transfer_function_out)) {
     stop("Argument 'transfer_function_out' is missing.")
@@ -41,7 +41,7 @@ plot_transfers <- function(transfer_function_out,
   
   col_mt_pt <- get_alpha_col(mt_to_pt_col, transparency)
   col_pt_mt <- get_alpha_col(pt_to_mt_col, transparency)
-  col_undef <- get_alpha_col(undefined_col, transparency)
+  col_undef <- get_alpha_col(unidentified_col, transparency)
   
   link_colors <- ifelse(transfer_function_out$direction == "MT -> PT", col_mt_pt,
                         ifelse(transfer_function_out$direction == "PT -> MT", col_pt_mt, col_undef))
@@ -111,7 +111,7 @@ plot_transfers <- function(transfer_function_out,
   
   graphics::legend(x = -1.3, y = -0.7, 
                    legend = c("MT -> PT", "PT -> MT", "Unidentified"), 
-                   fill = c(mt_to_pt_col, pt_to_mt_col, undefined_col), 
+                   fill = c(mt_to_pt_col, pt_to_mt_col, unidentified_col), 
                    title = expression(bold("Transfer Direction")), bty = "n", cex = 0.7)
   
   graphics::legend(x = -1.3, y = -1.1, 
