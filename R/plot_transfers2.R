@@ -1,20 +1,51 @@
-plot_transfers2 <- function(data, 
-                                   normalization = TRUE,
-                                   chromosome_gap = 0.05, 
-                                   transparency = 0.5,
-                                   mt_sector_col = "orange", 
-                                   pt_sector_col = "darkgreen",
-                                   mt_to_pt_col = "firebrick1", 
-                                   pt_to_mt_col = "dodgerblue1", 
-                                   unidentified_col = "grey80") {
+#' Linear Visualization of Genomic Transfers
+#'
+#' Generates a linear synteny plot (ribbon plot) visualizing genomic transfers 
+#' between the mitogenome and the plastome. This function supports multiple 
+#' chromosomes on both axes by introducing customizable gaps between them 
+#' for enhanced clarity.
+#'
+#' @param transfer_function_out A data frame containing at least the following columns: 
+#'   \code{mt_id}, \code{pt_id}, \code{mt_start}, \code{mt_end}, \code{pt_start}, 
+#'   \code{pt_end}, \code{mt_total_len}, \code{pt_total_len}, and optionally \code{direction}.
+#' @param normalization Logical. If \code{TRUE}, positions are scaled to percentages (0-100%). 
+#'   If \code{FALSE}, raw base pair (bp) units are used. Defaults to \code{TRUE}.
+#' @param chromosome_gap Numeric. The size of the gap between adjacent chromosomes. 
+#'   When \code{normalization} is \code{TRUE}, this is a fraction of the total axis length 
+#'   (e.g., 0.05 = 5%). Defaults to 0.05.
+#' @param transparency Numeric. The opacity of the ribbon fill (0 to 1). Defaults to 0.5.
+#' @param mt_sector_col Character. Color for the mitochondrial genome segments. Defaults to "orange".
+#' @param pt_sector_col Character. Color for the plastid genome segments. Defaults to "darkgreen".
+#' @param mt_to_pt_col Character. Color for ribbons representing MT to PT transfers. Defaults to "firebrick1".
+#' @param pt_to_mt_col Character. Color for ribbons representing PT to MT transfers. Defaults to "dodgerblue1".
+#' @param unidentified_col Character. Color for ribbons with an unknown transfer direction. Defaults to "grey80".
+#'
+#'
+#' @examples
+#' # Assuming 'my_data' is your data frame:
+#' # plot_transfers2(transfer_function_out = my_data, normalization = TRUE)
+
+plot_transfers2 <- function(transfer_function_out, 
+                            normalization = TRUE,
+                            chromosome_gap = 0.05, 
+                            transparency = 0.5,
+                            mt_sector_col = "orange", 
+                            pt_sector_col = "darkgreen",
+                            mt_to_pt_col = "firebrick1", 
+                            pt_to_mt_col = "dodgerblue1", 
+                            unidentified_col = "grey80") {
   
-  data <- data %>%
+  if (!requireNamespace("ggforce", quietly = TRUE)) {
+    stop("Package 'ggforce' is required for this function.")
+  }
+
+  data_clean <- transfer_function_out %>%
     mutate(across(c(mt_start, mt_end, pt_start, pt_end, mt_total_len, pt_total_len), as.numeric))
   
-  if (!"direction" %in% colnames(data)) data$direction <- "PT -> MT"
+  if (!"direction" %in% colnames(data_clean)) data_clean$direction <- "PT -> MT"
   
-  mt_raw <- data %>% group_by(mt_id) %>% summarise(len = first(mt_total_len), .groups = 'drop')
-  pt_raw <- data %>% group_by(pt_id) %>% summarise(len = first(pt_total_len), .groups = 'drop')
+  mt_raw <- data_clean %>% group_by(mt_id) %>% summarise(len = first(mt_total_len), .groups = 'drop')
+  pt_raw <- data_clean %>% group_by(pt_id) %>% summarise(len = first(pt_total_len), .groups = 'drop')
   
   mt_spacer <- if(normalization) chromosome_gap * sum(mt_raw$len) else chromosome_gap * (sum(mt_raw$len)/10)
   pt_spacer <- if(normalization) chromosome_gap * sum(pt_raw$len) else chromosome_gap * (sum(pt_raw$len)/10)
@@ -33,7 +64,7 @@ plot_transfers2 <- function(data,
     return(global)
   }
   
-  data_proc <- data %>%
+  data_proc <- data_clean %>%
     left_join(mt_info %>% select(mt_id, mt_off = offset), by = "mt_id") %>%
     left_join(pt_info %>% select(pt_id, pt_off = offset), by = "pt_id") %>%
     mutate(m_s = scale_pos(pmin(mt_start, mt_end), mt_off, total_mt_axis, normalization),
@@ -59,6 +90,7 @@ plot_transfers2 <- function(data,
                  aes(x = scale_pos(0, offset, total_mt_axis, normalization), 
                      xend = scale_pos(len, offset, total_mt_axis, normalization), y = 5, yend = 5), 
                  linewidth = 3, color = mt_sector_col, lineend = "butt") +
+    
     geom_segment(data = pt_info, 
                  aes(x = scale_pos(0, offset, total_pt_axis, normalization), 
                      xend = scale_pos(len, offset, total_pt_axis, normalization), y = 1, yend = 1), 
