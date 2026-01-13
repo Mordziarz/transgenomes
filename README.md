@@ -117,6 +117,20 @@ circlize::circos.clear()
 
 ![Circular](inst/graphs/Ex_plot_transfers.png)
 
+
+```r
+plot_transfers2(data = transfer_function_out,
+                normalization = T,
+                chromosome_gap = 0.1,
+                transparency = 0.5,
+                mt_sector_col = "orange",
+                pt_sector_col = "darkgreen",
+                mt_to_pt_col = "firebrick1",
+                pt_to_mt_col = "dodgerblue1",
+                unidentified_col = "grey80")
+```
+![GGplot2](inst/graphs/Ex_plot_transfers2.png)
+
 # Extract transfer regions
 
 The extract_regions() function allows you to extract FASTA sequences from transfer events. Simply provide the output of transfer_function() as the transfer_function_out argument.
