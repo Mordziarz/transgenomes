@@ -119,7 +119,7 @@ circlize::circos.clear()
 
 
 ```r
-plot_transfers2(data = transfer_function_out,
+plot_transfers2(transfer_function_out = transfer_function_out,
                 normalization = T,
                 chromosome_gap = 0.1,
                 transparency = 0.5,
