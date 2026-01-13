@@ -118,6 +118,8 @@ circlize::circos.clear()
 ![Circular](inst/graphs/Ex_plot_transfers.png)
 
 
+The program also generates a basic linear visualization.
+
 ```r
 plot_transfers2(transfer_function_out = transfer_function_out,
                 normalization = T,
