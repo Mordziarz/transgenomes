@@ -39,19 +39,20 @@ plot_transfers <- function(transfer_function_out,
     rgb(rgb_val[1], rgb_val[2], rgb_val[3], maxColorValue = 255, alpha = alpha * 255)
   }
   
-  col_mt_pt <- get_alpha_col(mt_to_pt_col, transparency)
-  col_pt_mt <- get_alpha_col(pt_to_mt_col, transparency)
-  col_undef <- get_alpha_col(unidentified_col, transparency)
+  col_mt_pt_alpha <- get_alpha_col(mt_to_pt_col, transparency)
+  col_pt_mt_alpha <- get_alpha_col(pt_to_mt_col, transparency)
+  col_undef_alpha <- get_alpha_col(unidentified_col, transparency)
   
-  link_colors <- ifelse(transfer_function_out$direction == "MT -> PT", col_mt_pt,
-                        ifelse(transfer_function_out$direction == "PT -> MT", col_pt_mt, col_undef))
+  link_fill_colors <- ifelse(transfer_function_out$direction == "MT -> PT", col_mt_pt_alpha,
+                             ifelse(transfer_function_out$direction == "PT -> MT", col_pt_mt_alpha, col_undef_alpha))
+  
+  link_border_colors <- ifelse(transfer_function_out$direction == "MT -> PT", mt_to_pt_col,
+                               ifelse(transfer_function_out$direction == "PT -> MT", pt_to_mt_col, unidentified_col))
   
   mt_ids <- unique(transfer_function_out$mt_id)
   pt_ids <- unique(transfer_function_out$pt_id)
-  
   mt_chroms <- unique(transfer_function_out[, c("mt_id", "mt_total_len")])
   colnames(mt_chroms) <- c("id", "len")
-  
   pt_chroms <- unique(transfer_function_out[, c("pt_id", "pt_total_len")])
   colnames(pt_chroms) <- c("id", "len")
   
@@ -62,7 +63,6 @@ plot_transfers <- function(transfer_function_out,
   names(sector_colors) <- full_genome_info$id
   
   circlize::circos.clear()
-  
   circlize::circos.par(
     start.degree = start_degree, 
     gap.after = rep(gap, nrow(full_genome_info)),
@@ -91,9 +91,7 @@ plot_transfers <- function(transfer_function_out,
       facing = "bending.inside", 
       niceFacing = TRUE
     )
-    
     circlize::circos.axis(labels.cex = 0.4, minor.ticks = 1)
-    
   }, bg.border = NA, track.height = 0.1)
   
   links_mt <- data.frame(
@@ -107,7 +105,13 @@ plot_transfers <- function(transfer_function_out,
     end = pmax(as.numeric(transfer_function_out$pt_start), as.numeric(transfer_function_out$pt_end))
   )
   
-  circlize::circos.genomicLink(links_mt, links_pt, col = link_colors, border = NA)
+  circlize::circos.genomicLink(
+    links_mt, 
+    links_pt, 
+    col = link_fill_colors, 
+    border = link_border_colors,
+    lwd = 0.5
+  )
   
   graphics::legend(x = -1.3, y = -0.7, 
                    legend = c("MT -> PT", "PT -> MT", "Unidentified"), 
