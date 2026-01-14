@@ -35,8 +35,6 @@ plot_transfers2 <- function(transfer_function_out,
                             pt_to_mt_col = "dodgerblue1", 
                             unidentified_col = "grey80") {
   
-  library(dplyr)
-  library(ggplot2)
   
   data_clean <- transfer_function_out %>%
     mutate(across(c(mt_start, mt_end, pt_start, pt_end, mt_total_len, pt_total_len), as.numeric))
@@ -106,6 +104,9 @@ plot_transfers2 <- function(transfer_function_out,
     scale_color_manual(values = c("MT -> PT" = mt_to_pt_col, 
                                   "PT -> MT" = pt_to_mt_col, 
                                   "Unidentified" = unidentified_col)) +
+
+    guides(color = guide_legend(override.aes = list(linewidth = 5)))+
+    
     scale_linewidth_identity() + 
     
     scale_y_continuous(breaks = c(1, 5), labels = c("Plastome", "Mitogenome"), limits = c(0, 6)) + 
