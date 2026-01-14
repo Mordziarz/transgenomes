@@ -67,8 +67,8 @@ plot_transfers2 <- function(transfer_function_out,
   }
   
   data_proc <- data_clean %>%
-    left_join(mt_info %>% select(mt_id, mt_off = offset, mt_actual_len = len), by = "mt_id") %>%
-    left_join(pt_info %>% select(pt_id, pt_off = offset, pt_actual_len = len), by = "pt_id") %>%
+    left_join(mt_info %>% select(mt_id, mt_off = offset), by = "mt_id") %>%
+    left_join(pt_info %>% select(pt_id, pt_off = offset), by = "pt_id") %>%
     mutate(
       m_start_scaled = scale_pos(mt_start, mt_off, total_mt_axis, normalization),
       m_end_scaled   = scale_pos(mt_end, mt_off, total_mt_axis, normalization),
@@ -76,26 +76,26 @@ plot_transfers2 <- function(transfer_function_out,
       p_end_scaled   = scale_pos(pt_end, pt_off, total_pt_axis, normalization),
       m_mid = (m_start_scaled + m_end_scaled) / 2,
       p_mid = (p_start_scaled + p_end_scaled) / 2,
-      transfer_size = abs(mt_end - mt_start)
+      rel_width = (abs(mt_end - mt_start) / total_mt_axis) * 500 
     )
   
   ggplot(data_proc) +
     geom_segment(aes(x = m_mid, y = 5, 
                      xend = p_mid, yend = 1, 
-                     linewidth = transfer_size, 
+                     linewidth = rel_width, 
                      color = direction), 
-                 alpha = transparency) + 
+                 alpha = transparency, lineend = "butt") + 
     
     geom_segment(data = mt_info, 
                  aes(x = scale_pos(0, offset, total_mt_axis, normalization), 
                      xend = scale_pos(len, offset, total_mt_axis, normalization), 
-                     y = 4.5, yend = 4.5), 
+                     y = 5, yend = 5),
                  linewidth = 4, color = mt_sector_col, lineend = "butt") +
     
     geom_segment(data = pt_info, 
                  aes(x = scale_pos(0, offset, total_pt_axis, normalization), 
                      xend = scale_pos(len, offset, total_pt_axis, normalization), 
-                     y = 1.5, yend = 1.5), 
+                     y = 1, yend = 1),
                  linewidth = 4, color = pt_sector_col, lineend = "butt") +
     
     geom_text(data = mt_info, aes(x = scale_pos(len/2, offset, total_mt_axis, normalization), 
@@ -106,11 +106,12 @@ plot_transfers2 <- function(transfer_function_out,
     scale_color_manual(values = c("MT -> PT" = mt_to_pt_col, 
                                   "PT -> MT" = pt_to_mt_col, 
                                   "Unidentified" = unidentified_col)) +
+    scale_linewidth_identity() + 
+    
     scale_y_continuous(breaks = c(1, 5), labels = c("Plastome", "Mitogenome"), limits = c(0, 6)) + 
     scale_x_continuous(expand = c(0.05, 0.05)) +
     labs(x = ifelse(normalization, "Relative Position (%)", "Position (bp)"), 
          y = "", color = "Transfer Direction") +
-    guides(linewidth = "none", color = guide_legend(override.aes = list(linewidth = 3))) +
     theme_minimal() +
     theme(
       panel.grid.major.y = element_blank(),
