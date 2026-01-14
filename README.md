@@ -131,7 +131,7 @@ plot_transfers2(transfer_function_out = transfer_function_out,
                 pt_to_mt_col = "dodgerblue1",
                 unidentified_col = "grey80")
 ```
-![GGplot2](inst/graphs/Ex_plot2.png)
+![GGplot2](inst/graphs/Ex_plot3.png)
 
 # Extract transfer regions
 
