@@ -105,7 +105,7 @@ plot_transfers2 <- function(transfer_function_out,
                                   "PT -> MT" = pt_to_mt_col, 
                                   "Unidentified" = unidentified_col)) +
 
-    guides(color = guide_legend(override.aes = list(linewidth = 5)))+
+    guides(color = guide_legend(override.aes = list(linewidth = 2)))+
 
     scale_linewidth_identity() + 
     
