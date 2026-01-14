@@ -44,6 +44,10 @@ png("Ex_plot_transfers.png", width=6, height=6, units = "in", res = 300)
 transgenomes::plot_transfers(transfer_function_out = transfer_function_out)
 dev.off()
 
+png("Ex_plot_transfers2.png", width=6, height=6, units = "in", res = 300)
+transgenomes::plot_transfers2(transfer_function_out = transfer_function_out)
+dev.off()
+
 transfer_function_out <- transfer_function_out[transfer_function_out$direction %in% c("PT -> MT","MT -> PT"),]
 
 test_s <- transgenomes::extract_regions(transfer_function_out = transfer_function_out,
@@ -70,8 +74,4 @@ results_GC$gc_data
 
 png("Ex_GC_content.png", width=5, height=5, units = "in", res = 300)
 results_GC$plot
-dev.off()
-
-png("Ex_plot_transfers2.png", width=6, height=6, units = "in", res = 300)
-transgenomes::plot_transfers2(transfer_function_out = transfer_function_out)
 dev.off()
