@@ -88,12 +88,12 @@ plot_transfers2 <- function(transfer_function_out,
     
     geom_segment(data = mt_info, 
                  aes(x = scale_pos(0, offset, total_mt_axis, normalization), 
-                     xend = scale_pos(len, offset, total_mt_axis, normalization), y = 5.0445, yend = 5.0445), 
+                     xend = scale_pos(len, offset, total_mt_axis, normalization), y = 5.045, yend = 5.045), 
                  linewidth = 2, color = mt_sector_col, lineend = "butt") +
     
     geom_segment(data = pt_info, 
                  aes(x = scale_pos(0, offset, total_pt_axis, normalization), 
-                     xend = scale_pos(len, offset, total_pt_axis, normalization), y = 0.9555, yend = 0.9555), 
+                     xend = scale_pos(len, offset, total_pt_axis, normalization), y = 0.955, yend = 0.955), 
                  linewidth = 2, color = pt_sector_col, lineend = "butt") +
     
     geom_text(data = mt_info, aes(x = scale_pos(len/2, offset, total_mt_axis, normalization), 
