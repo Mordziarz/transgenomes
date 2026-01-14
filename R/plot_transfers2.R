@@ -1,6 +1,6 @@
 #' Linear Visualization of Genomic Transfers
 #'
-#' Generates a linear synteny plot (ribbon plot) visualizing genomic transfers 
+#' Generates a linear synteny plot visualizing genomic transfers 
 #' between the mitogenome and the plastome. This function supports multiple 
 #' chromosomes on both axes by introducing customizable gaps between them 
 #' for enhanced clarity.
