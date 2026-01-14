@@ -93,7 +93,7 @@ plot_transfers2 <- function(transfer_function_out,
     geom_segment(data = pt_info, 
                  aes(x = scale_pos(0, offset, total_pt_axis, normalization), 
                      xend = scale_pos(len, offset, total_pt_axis, normalization), 
-                     y = 0, yend = 0),
+                     y = 1, yend = 1),
                  linewidth = 4, color = pt_sector_col, lineend = "butt") +
     
     geom_text(data = mt_info, aes(x = scale_pos(len/2, offset, total_mt_axis, normalization), 
