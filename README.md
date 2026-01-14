@@ -115,7 +115,7 @@ dev.off()
 circlize::circos.clear()
 ```
 
-![Circular](inst/graphs/Ex_plot_transfers.png)
+![Circular](inst/graphs/Ex_plot1.png)
 
 
 The program also generates a basic linear visualization.
@@ -131,7 +131,7 @@ plot_transfers2(transfer_function_out = transfer_function_out,
                 pt_to_mt_col = "dodgerblue1",
                 unidentified_col = "grey80")
 ```
-![GGplot2](inst/graphs/Ex_plot_transfers2.png)
+![GGplot2](inst/graphs/Ex_plot2.png)
 
 # Extract transfer regions
 
