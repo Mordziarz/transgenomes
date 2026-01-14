@@ -97,16 +97,16 @@ plot_transfers2 <- function(transfer_function_out,
                  linewidth = 4, color = pt_sector_col, lineend = "butt") +
     
     geom_text(data = mt_info, aes(x = scale_pos(len/2, offset, total_mt_axis, normalization), 
-                                  y = 5.4, label = mt_id), fontface = "bold") +
+                                  y = 5.4, label = mt_id)) +
     geom_text(data = pt_info, aes(x = scale_pos(len/2, offset, total_pt_axis, normalization), 
-                                  y = 0.6, label = pt_id), fontface = "bold") +
+                                  y = 0.6, label = pt_id)) +
     
     scale_color_manual(values = c("MT -> PT" = mt_to_pt_col, 
                                   "PT -> MT" = pt_to_mt_col, 
                                   "Unidentified" = unidentified_col)) +
 
     guides(color = guide_legend(override.aes = list(linewidth = 5)))+
-    
+
     scale_linewidth_identity() + 
     
     scale_y_continuous(breaks = c(1, 5), labels = c("Plastome", "Mitogenome"), limits = c(0, 6)) + 
