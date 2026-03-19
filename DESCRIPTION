@@ -1,7 +1,7 @@
 Package: transgenomes
 Type: Package
 Title: A tool for analyzing transfers between genomes 
-Version: 0.1.0
+Version: 1.0
 Author: Mateusz Maździarz (Mordziarz)
 Maintainer: The package maintainer <mazdziarzm@gmail.com>
 Description: Provides tools for comparative genomics analysis focused on identifying and visualizing sequence transfers between organellar and nuclear genomes. The package uses BLASTn for pairwise genome comparison, integrates gene annotations from BED files, and generates publication-ready circos plots with the 'circlize' package. Includes functions for detecting homologous regions between mitogenome, chloroplast, and nuclear genomes, and outputs detailed tables of transferred genes and their coordinates.
