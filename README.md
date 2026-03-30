@@ -38,6 +38,23 @@ V4 - Gene name
 | OR220799.1  | 0  | 74  | trnD1 |
 | OR220799.1  | 270  |   342 |   trnN    |
 
+How to convert GFF3 to BED format:
+
+```r
+bed_q <- read.csv("/inst/extdata/mito_carrot.gff3",sep="\t",header = F)
+bed_s <- read.csv("/inst/extdata/plas_carrot.gff3",sep="\t",header = F)
+
+bed_q <- bed_q[bed_q$V3 %in% c("gene","pseudogene"),]
+bed_q$V9 <- gsub(".*Name=([^;]+).*", "\\1", bed_q$V9)
+bed_q <- bed_q[,c("V1","V4","V5","V9")]
+colnames(bed_q) <- c("V1","V2","V3","V4")
+
+bed_s <- bed_s[bed_s$V3 %in% c("gene","pseudogene"),]
+bed_s$V9 <- gsub(".*Name=([^;]+).*", "\\1", bed_s$V9)
+bed_s <- bed_s[,c("V1","V4","V5","V9")]
+colnames(bed_s) <- c("V1","V2","V3","V4")
+```
+
 ```r
 transfer_function_out <- transfer_function(fasta_mt = "fasta_q.fasta",
                                             fasta_pt = "fasta_s.fasta",
