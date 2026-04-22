@@ -181,7 +181,7 @@ results_GC$gc_data
 
 # Citation
 
-Paper in preparation
+Maździarz, M., Krawczyk, K. Transgenomes: automated detection and characterization of mitochondrial-plastid DNA transfers. J Plant Res (2026). https://doi.org/10.1007/s10265-026-01709-0
 
 # Support
 Any issues connected with the transgenomes should be addressed to Mateusz Mazdziarz (mateusz.mazdziarz@uwm.edu.pl).
