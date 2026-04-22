@@ -180,7 +180,7 @@ results_GC$gc_data
 ![GC](inst/graphs/Ex_GC_content.png)
 
 # Citation
-
+When utilizing transgenomes, kindly cite:
 Maździarz, M., Krawczyk, K. Transgenomes: automated detection and characterization of mitochondrial-plastid DNA transfers. J Plant Res (2026). https://doi.org/10.1007/s10265-026-01709-0
 
 # Support
