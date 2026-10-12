@@ -26,4 +26,3 @@ Suggests:
 RoxygenNote: 7.3.1
 BugReports: https://github.com/Mordziarz/transgenomes/issues
 URL: https://github.com/Mordziarz/transgenomes
-NeedsCompilation: no
