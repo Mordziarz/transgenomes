@@ -8,9 +8,9 @@ Description: Provides tools for comparative genomics analysis focused on identif
 License: MIT License
 Encoding: UTF-8
 LazyData: true
-Depends: 
+Depends:
     R (>= 4.0.0)
-Imports: 
+Imports:
     metablastr,
     circlize,
     Biostrings,
@@ -19,7 +19,7 @@ Imports:
     ggplot2,
     car,
     ggpubr
-Suggests: 
+Suggests:
     testthat,
     knitr,
     rmarkdown
