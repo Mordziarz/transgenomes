@@ -185,5 +185,3 @@ Maździarz, M., Krawczyk, K. Transgenomes: automated detection and characterizat
 
 # Support
 Any issues connected with the transgenomes should be addressed to Mateusz Mazdziarz (mateusz.mazdziarz@uwm.edu.pl).
-
-# Usage in scientific papers
